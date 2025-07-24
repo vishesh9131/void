@@ -24,6 +24,10 @@ This repo contains the full sourcecode for Void. If you're new, welcome!
 - 🌌 [Download](https://voideditor.com/download-beta)
 
 
+## Building and Running
+
+For detailed instructions on building and running Void IDE locally, see our [Build Guide](./HOW_TO_BUILD.md).
+
 ## Contributing
 
 1. To get started working on Void, check out our Project Board! You can also see [HOW_TO_CONTRIBUTE](https://github.com/voideditor/void/blob/main/HOW_TO_CONTRIBUTE.md).
