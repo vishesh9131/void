@@ -1,0 +1,436 @@
+{
+  "name": "ml-engineer-tools",
+  "displayName": "ML Engineer Tools",
+  "description": "Comprehensive tools for machine learning engineers with tensor shape inspection, GPU toggling, and smart ML workflows",
+  "version": "1.0.0",
+  "publisher": "vscode",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Data Science",
+    "Machine Learning"
+  ],
+  "keywords": [
+    "machine learning",
+    "pytorch",
+    "tensorflow",
+    "numpy",
+    "jupyter",
+    "tensor",
+    "gpu",
+    "ml"
+  ],
+  "activationEvents": [
+    "onLanguage:python",
+    "onLanguage:jupyter",
+    "workspaceContains:**/*.py",
+    "workspaceContains:**/*.ipynb"
+  ],
+  "main": "./out/extension.js",
+      "contributes": {
+        "commands": [
+            {
+                "command": "mlTools.toggleGPU",
+                "title": "Toggle GPU/CPU",
+                "icon": "$(zap)"
+            },
+            {
+                "command": "mlTools.cleanImports",
+                "title": "Clean Unused Imports",
+                "icon": "$(trash)"
+            },
+            {
+                "command": "mlTools.showLossPlot",
+                "title": "Show Loss Plot",
+                "icon": "$(graph)"
+            },
+            {
+                "command": "mlTools.syncSeeds",
+                "title": "Sync All Seeds to 42",
+                "icon": "$(sync)"
+            },
+            {
+                "command": "mlTools.visualizeGradients",
+                "title": "Visualize Gradients",
+                "icon": "$(eye)"
+            },
+            {
+                "command": "mlTools.addTypeHints",
+                "title": "Add Type Hints",
+                "icon": "$(symbol-property)"
+            },
+            {
+                "command": "mlTools.generateTest",
+                "title": "Generate pytest",
+                "icon": "$(beaker)"
+            },
+            {
+                "command": "mlTools.convertFramework",
+                "title": "Convert TF ↔ PyTorch",
+                "icon": "$(arrow-swap)"
+            },
+            {
+                "command": "mlTools.deployModel",
+                "title": "Deploy to Cloud",
+                "icon": "$(cloud-upload)"
+            },
+            {
+                "command": "mlTools.showArchitecture",
+                "title": "Show Model Architecture",
+                "icon": "$(repo-forked)"
+            },
+            {
+                "command": "mlTools.estimateTrainingTime",
+                "title": "Estimate Training Time",
+                "icon": "$(clock)"
+            },
+            {
+                "command": "mlTools.checkMemoryUsage",
+                "title": "Check GPU Memory",
+                "icon": "$(dashboard)"
+            },
+            {
+                "command": "mlTools.selectTensorBlock",
+                "title": "Select Tensor Block"
+            },
+            {
+                "command": "mlTools.addMultiCursor",
+                "title": "Multi-Cursor on Variables"
+            },
+            {
+                "command": "mlTools.enableColumnEdit",
+                "title": "Enable Column Edit Mode"
+            },
+            {
+                "command": "mlTools.openHyperparameterSlider",
+                "title": "Open Parameter Slider",
+                "icon": "$(settings-gear)"
+            },
+            {
+                "command": "mlTools.showPresetButtons",
+                "title": "ML Optimization Presets",
+                "icon": "$(rocket)"
+            },
+            {
+                "command": "mlTools.compareRuns",
+                "title": "Compare Hyperparameter Runs",
+                "icon": "$(compare-changes)"
+            },
+            {
+                "command": "mlTools.randomizeParams",
+                "title": "Randomize Parameters",
+                "icon": "$(symbol-misc)"
+            },
+            {
+                "command": "mlTools.showShapeTrails",
+                "title": "Show Shape Connections"
+            },
+            {
+                "command": "mlTools.showHotkeyHints",
+                "title": "Show ML Shortcuts"
+            },
+            {
+                "command": "mlTools.translateError",
+                "title": "Translate ML Error"
+            },
+            {
+                "command": "mlTools.generateDocstring",
+                "title": "Generate ML Docstring"
+            },
+            {
+                "command": "mlTools.rightClickNormalize",
+                "title": "Add Normalization"
+            },
+            {
+                "command": "mlTools.generateSplit",
+                "title": "Generate Train/Test Split"
+            },
+            {
+                "command": "mlTools.huggingFaceQuickAdd",
+                "title": "Add HuggingFace Model"
+            },
+            {
+                "command": "mlTools.scikitSnippet",
+                "title": "Add Scikit-Learn Pipeline"
+            }
+        ],
+            "keybindings": [
+            {
+                "command": "mlTools.toggleGPU",
+                "key": "ctrl+shift+g",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.syncSeeds",
+                "key": "ctrl+shift+s",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.cleanImports",
+                "key": "ctrl+shift+i",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.selectTensorBlock",
+                "key": "ctrl+shift+t",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.addMultiCursor",
+                "key": "alt+shift+a",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.estimateTrainingTime",
+                "key": "ctrl+shift+e",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.showArchitecture",
+                "key": "ctrl+shift+m",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.increaseParam",
+                "key": "ctrl+shift+up",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.decreaseParam",
+                "key": "ctrl+shift+down",
+                "when": "editorTextFocus && resourceExtname == .py"
+            },
+            {
+                "command": "mlTools.showHotkeyHints",
+                "key": "ctrl+shift+h",
+                "when": "editorTextFocus && resourceExtname == .py"
+            }
+        ],
+            "menus": {
+            "editor/context": [
+                {
+                    "command": "mlTools.visualizeGradients",
+                    "when": "resourceExtname == .py",
+                    "group": "ml@1"
+                },
+                {
+                    "command": "mlTools.addTypeHints",
+                    "when": "resourceExtname == .py",
+                    "group": "ml@2"
+                },
+                {
+                    "command": "mlTools.generateTest",
+                    "when": "resourceExtname == .py",
+                    "group": "ml@3"
+                },
+                {
+                    "command": "mlTools.rightClickNormalize",
+                    "when": "resourceExtname == .py",
+                    "group": "ml@4"
+                },
+                {
+                    "command": "mlTools.generateSplit",
+                    "when": "resourceExtname == .py",
+                    "group": "ml@5"
+                },
+                {
+                    "command": "mlTools.convertFramework",
+                    "when": "resourceExtname == .py",
+                    "group": "ml@6"
+                },
+                {
+                    "command": "mlTools.selectTensorBlock",
+                    "when": "resourceExtname == .py",
+                    "group": "selection@1"
+                },
+                {
+                    "command": "mlTools.addMultiCursor",
+                    "when": "resourceExtname == .py",
+                    "group": "selection@2"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "mlTools.toggleGPU",
+                    "when": "resourceExtname == .py",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "mlTools.showLossPlot",
+                    "when": "resourceExtname == .py",
+                    "group": "navigation@2"
+                },
+                {
+                    "command": "mlTools.showArchitecture",
+                    "when": "resourceExtname == .py",
+                    "group": "navigation@3"
+                },
+                {
+                    "command": "mlTools.estimateTrainingTime",
+                    "when": "resourceExtname == .py",
+                    "group": "navigation@4"
+                },
+                {
+                    "command": "mlTools.showPresetButtons",
+                    "when": "resourceExtname == .py",
+                    "group": "navigation@5"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "mlTools.toggleGPU",
+                    "when": "resourceExtname == .py"
+                },
+                {
+                    "command": "mlTools.showShapeTrails",
+                    "when": "resourceExtname == .py"
+                },
+                {
+                    "command": "mlTools.showHotkeyHints",
+                    "when": "resourceExtname == .py"
+                },
+                {
+                    "command": "mlTools.randomizeParams",
+                    "when": "resourceExtname == .py"
+                },
+                {
+                    "command": "mlTools.compareRuns",
+                    "when": "resourceExtname == .py"
+                }
+            ]
+        },
+            "configuration": {
+            "title": "ML Engineer Tools",
+            "properties": {
+                "mlTools.enableShapeInspection": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable tensor shape inspection on hover"
+                },
+                "mlTools.enableGPUToggle": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable GPU/CPU toggle functionality"
+                },
+                "mlTools.enableAutoImportClean": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Automatically clean unused imports on save"
+                },
+                "mlTools.enableNaNDetection": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Highlight layers prone to NaN explosions"
+                },
+                "mlTools.enableMemoryMonitoring": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show GPU memory usage beside operations"
+                },
+                "mlTools.defaultSeed": {
+                    "type": "number",
+                    "default": 42,
+                    "description": "Default seed value for synchronization"
+                },
+                "mlTools.enableSmartPaste": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable smart paste with auto-imports"
+                },
+                "mlTools.enableShapeMatching": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Warn about dimension mismatches when pasting"
+                },
+                "mlTools.enableColorfulTensors": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable colorful syntax highlighting for ML code"
+                },
+                "mlTools.enableAutoFormat": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Automatically format code on save"
+                },
+                "mlTools.enableConfettiCompile": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show celebration animation on successful compilation"
+                },
+                "mlTools.enableBiasDetection": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Detect and warn about potential bias in data columns"
+                },
+                "mlTools.enableTrainingTimeEstimation": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show training time estimates for model.fit() calls"
+                },
+                "mlTools.enableArchitectureVisualization": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable model architecture visualization and mini-map"
+                },
+                "mlTools.enableHyperparameterSliders": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable interactive hyperparameter adjustment sliders"
+                },
+                "mlTools.enableProgressWhisperer": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show subtle training progress indicators in status bar"
+                }
+            }
+        },
+    "colors": [
+      {
+        "id": "mlTools.tensorVariable",
+        "description": "Color for tensor variables",
+        "defaults": {
+          "dark": "#FF6B35",
+          "light": "#FF6B35"
+        }
+      },
+      {
+        "id": "mlTools.dataOperation",
+        "description": "Color for data operations",
+        "defaults": {
+          "dark": "#FFA500",
+          "light": "#FF8C00"
+        }
+      },
+      {
+        "id": "mlTools.nanWarning",
+        "description": "Color for NaN warnings",
+        "defaults": {
+          "dark": "#FF4444",
+          "light": "#CC0000"
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "python",
+        "path": "./snippets/ml-snippets.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "ast-types": "^0.14.2",
+    "recast": "^0.23.4"
+  }
+}
