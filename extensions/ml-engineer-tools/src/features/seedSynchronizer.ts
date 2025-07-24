@@ -4,22 +4,22 @@ export class SeedSynchronizer {
     private seedPatterns = [
         // NumPy
         { pattern: /np\.random\.seed\(\d+\)/g, replacement: 'np.random.seed(SEED)', import: 'import numpy as np' },
-        
+
         // PyTorch
         { pattern: /torch\.manual_seed\(\d+\)/g, replacement: 'torch.manual_seed(SEED)', import: 'import torch' },
         { pattern: /torch\.cuda\.manual_seed\(\d+\)/g, replacement: 'torch.cuda.manual_seed(SEED)', import: 'import torch' },
         { pattern: /torch\.cuda\.manual_seed_all\(\d+\)/g, replacement: 'torch.cuda.manual_seed_all(SEED)', import: 'import torch' },
-        
+
         // TensorFlow
         { pattern: /tf\.random\.set_seed\(\d+\)/g, replacement: 'tf.random.set_seed(SEED)', import: 'import tensorflow as tf' },
         { pattern: /tf\.set_random_seed\(\d+\)/g, replacement: 'tf.set_random_seed(SEED)', import: 'import tensorflow as tf' },
-        
+
         // Python random
         { pattern: /random\.seed\(\d+\)/g, replacement: 'random.seed(SEED)', import: 'import random' },
-        
+
         // Scikit-learn
         { pattern: /random_state\s*=\s*\d+/g, replacement: 'random_state=SEED', import: '' },
-        
+
         // Pandas
         { pattern: /\.sample\([^)]*random_state\s*=\s*\d+/g, replacement: (match: string) => match.replace(/random_state\s*=\s*\d+/, 'random_state=SEED'), import: '' }
     ];
@@ -33,9 +33,9 @@ export class SeedSynchronizer {
         const seedValue = vscode.workspace.getConfiguration('mlTools').get('defaultSeed', 42);
         const document = editor.document;
         const text = document.getText();
-        
+
         const result = this.synchronizeSeeds(text, seedValue);
-        
+
         if (result.modified) {
             const edit = new vscode.WorkspaceEdit();
             const fullRange = new vscode.Range(
@@ -74,16 +74,22 @@ export class SeedSynchronizer {
         // Replace SEED placeholder with actual value in patterns
         const processedPatterns = this.seedPatterns.map(pattern => ({
             ...pattern,
-            replacement: pattern.replacement.replace('SEED', seedValue.toString())
+            replacement: typeof pattern.replacement === 'string'
+                ? pattern.replacement.replace('SEED', seedValue.toString())
+                : pattern.replacement // leave function as is
         }));
 
         // Apply each pattern
         processedPatterns.forEach(({ pattern, replacement, import: importStatement }) => {
             const matches = result.match(pattern);
             if (matches) {
-                result = result.replace(pattern, replacement);
+                if (typeof replacement === 'string') {
+                    result = result.replace(pattern, replacement);
+                } else {
+                    result = result.replace(pattern, replacement);
+                }
                 changedCount += matches.length;
-                
+
                 // Track required imports
                 if (importStatement && !existingImports.includes(importStatement)) {
                     missingImports.add(importStatement);
@@ -123,7 +129,7 @@ export class SeedSynchronizer {
         const document = editor.document;
         const text = document.getText();
         const lines = text.split('\n');
-        
+
         // Find the best position to insert imports
         let insertPosition = 0;
         for (let i = 0; i < lines.length; i++) {
@@ -137,7 +143,7 @@ export class SeedSynchronizer {
 
         const importsText = imports.join('\n') + '\n';
         const position = new vscode.Position(insertPosition, 0);
-        
+
         const edit = new vscode.WorkspaceEdit();
         edit.insert(document.uri, position, importsText);
         await vscode.workspace.applyEdit(edit);
@@ -151,12 +157,12 @@ export class SeedSynchronizer {
 
         const frameworks = await this.detectFrameworks();
         const seedBlock = this.generateSeedBlock(seedValue, frameworks);
-        
+
         if (seedBlock) {
             const document = editor.document;
             const text = document.getText();
             const lines = text.split('\n');
-            
+
             // Find position after imports
             let insertPosition = 0;
             for (let i = 0; i < lines.length; i++) {
@@ -211,17 +217,17 @@ export class SeedSynchronizer {
 
     private generateSeedBlock(seedValue: number, frameworks: string[]): string {
         const lines: string[] = [];
-        
+
         lines.push('# Set random seeds for reproducibility');
-        
+
         if (frameworks.includes('random')) {
             lines.push(`random.seed(${seedValue})`);
         }
-        
+
         if (frameworks.includes('numpy')) {
             lines.push(`np.random.seed(${seedValue})`);
         }
-        
+
         if (frameworks.includes('pytorch')) {
             lines.push(`torch.manual_seed(${seedValue})`);
             lines.push(`torch.cuda.manual_seed(${seedValue})`);
@@ -229,11 +235,11 @@ export class SeedSynchronizer {
             lines.push('torch.backends.cudnn.deterministic = True');
             lines.push('torch.backends.cudnn.benchmark = False');
         }
-        
+
         if (frameworks.includes('tensorflow')) {
             lines.push(`tf.random.set_seed(${seedValue})`);
         }
-        
+
         if (frameworks.length === 0) {
             // Default seed setup for common ML workflows
             lines.push(`import random`);
@@ -241,9 +247,9 @@ export class SeedSynchronizer {
             lines.push(`random.seed(${seedValue})`);
             lines.push(`np.random.seed(${seedValue})`);
         }
-        
+
         lines.push(''); // Empty line after seed block
-        
+
         return lines.join('\n');
     }
 
@@ -261,22 +267,22 @@ export class SeedSynchronizer {
             cancellable: false
         }, async (progress) => {
             const diceFrames = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-            
+
             for (let i = 0; i < 10; i++) {
                 const frame = diceFrames[i % diceFrames.length];
                 progress.report({ message: `${frame} Rolling...` });
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
-            
+
             return Math.floor(Math.random() * 10000);
         });
 
         // Update configuration with new seed
         await vscode.workspace.getConfiguration('mlTools').update('defaultSeed', progress, vscode.ConfigurationTarget.Workspace);
-        
+
         // Apply the new seed
         await this.syncSeeds();
-        
+
         vscode.window.showInformationMessage(
             `🎲 New random seed: ${progress}`,
             { modal: false }

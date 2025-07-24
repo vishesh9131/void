@@ -6,26 +6,26 @@ export class SmartPaste {
         { pattern: /model\.fit\(/g, imports: ['import tensorflow as tf'], framework: 'tensorflow' },
         { pattern: /tf\./g, imports: ['import tensorflow as tf'], framework: 'tensorflow' },
         { pattern: /keras\./g, imports: ['from tensorflow import keras'], framework: 'tensorflow' },
-        
+
         // PyTorch patterns
         { pattern: /torch\./g, imports: ['import torch'], framework: 'pytorch' },
         { pattern: /nn\./g, imports: ['import torch.nn as nn'], framework: 'pytorch' },
         { pattern: /F\./g, imports: ['import torch.nn.functional as F'], framework: 'pytorch' },
         { pattern: /optim\./g, imports: ['import torch.optim as optim'], framework: 'pytorch' },
-        
+
         // NumPy patterns
         { pattern: /np\./g, imports: ['import numpy as np'], framework: 'numpy' },
-        
+
         // Pandas patterns
         { pattern: /pd\./g, imports: ['import pandas as pd'], framework: 'pandas' },
         { pattern: /pd\.read_csv/g, imports: ['import pandas as pd'], framework: 'pandas' },
-        
+
         // Matplotlib patterns
         { pattern: /plt\./g, imports: ['import matplotlib.pyplot as plt'], framework: 'matplotlib' },
-        
+
         // Scikit-learn patterns
         { pattern: /from sklearn/g, imports: [], framework: 'sklearn' },
-        
+
         // Hugging Face patterns
         { pattern: /from transformers/g, imports: [], framework: 'transformers' },
         { pattern: /AutoModel|AutoTokenizer/g, imports: ['from transformers import AutoModel, AutoTokenizer'], framework: 'transformers' }
@@ -106,16 +106,16 @@ export class SmartPaste {
 
         // Remove pip install commands
         sanitized = sanitized.replace(/!pip install[^\n]*/g, '# Removed: pip install command');
-        
+
         // Remove apt-get commands
         sanitized = sanitized.replace(/!apt-get[^\n]*/g, '# Removed: apt-get command');
-        
+
         // Remove Google Colab imports
         sanitized = sanitized.replace(/from google\.colab[^\n]*/g, '# Removed: Google Colab import');
-        
+
         // Remove drive mount
         sanitized = sanitized.replace(/drive\.mount[^\n]*/g, '# Removed: Drive mount');
-        
+
         // Remove magic commands
         sanitized = sanitized.replace(/%matplotlib inline/g, '# Removed: matplotlib inline magic');
         sanitized = sanitized.replace(/%load_ext[^\n]*/g, '# Removed: load_ext magic');
@@ -149,7 +149,7 @@ export class SmartPaste {
         const document = editor.document;
         const text = document.getText();
         const lines = text.split('\n');
-        
+
         return lines.filter(line => {
             const trimmed = line.trim();
             return trimmed.startsWith('import ') || trimmed.startsWith('from ');
@@ -185,11 +185,11 @@ export class SmartPaste {
                 // Try to find the file in common data directories
                 const commonDataDirs = ['data', 'datasets', 'input', 'assets', 'resources'];
                 const fileName = filePath.split('/').pop() || filePath;
-                
+
                 // Suggest a project-relative path
                 const suggestedPath = `./data/${fileName}`;
                 hasFixed = true;
-                
+
                 return match.replace(filePath, suggestedPath);
             });
         }
@@ -199,7 +199,7 @@ export class SmartPaste {
 
     private checkShapeMismatches(text: string): string[] {
         const warnings: string[] = [];
-        
+
         // Look for potential shape mismatches in layer definitions
         const layerPatterns = [
             /nn\.Linear\((\d+),\s*(\d+)\)/g,
@@ -210,7 +210,7 @@ export class SmartPaste {
         // This is a simplified check - in a real implementation,
         // you'd want to do more sophisticated shape analysis
         const lines = text.split('\n');
-        const layerInfo: Array<{type: string, input: number, output: number, line: number}> = [];
+        const layerInfo: Array<{ type: string, input: number, output: number, line: number }> = [];
 
         lines.forEach((line, index) => {
             layerPatterns.forEach(pattern => {
@@ -232,7 +232,7 @@ export class SmartPaste {
         for (let i = 0; i < layerInfo.length - 1; i++) {
             const current = layerInfo[i];
             const next = layerInfo[i + 1];
-            
+
             if (current.output !== next.input) {
                 warnings.push(`Potential shape mismatch between line ${current.line} and ${next.line}`);
             }
@@ -243,7 +243,7 @@ export class SmartPaste {
 
     private async checkVersionConflicts(text: string): Promise<string[]> {
         const warnings: string[] = [];
-        
+
         // Check for common version conflicts
         const conflictPatterns = [
             { pattern: /tensorflow.*2\./g, conflict: 'keras', message: 'TensorFlow 2.x includes Keras - separate keras import may conflict' },
@@ -268,7 +268,7 @@ export class SmartPaste {
         const document = editor.document;
         const text = document.getText();
         const lines = text.split('\n');
-        
+
         // Find the best position to insert imports
         let insertPosition = 0;
         for (let i = 0; i < lines.length; i++) {
@@ -282,7 +282,7 @@ export class SmartPaste {
 
         const importsText = imports.join('\n') + '\n';
         const position = new vscode.Position(insertPosition, 0);
-        
+
         const edit = new vscode.WorkspaceEdit();
         edit.insert(document.uri, position, importsText);
         await vscode.workspace.applyEdit(edit);
@@ -297,7 +297,7 @@ export class SmartPaste {
 
         const selection = editor.selection;
         const selectedText = editor.document.getText(selection);
-        
+
         // Check if selection looks like a data loading operation
         if (this.isDataLoadingOperation(selectedText)) {
             const preview = await this.generateDataPreview(selectedText);
@@ -356,5 +356,93 @@ First 3 rows:
             </body>
             </html>
         `;
+    }
+
+    // --- Extra commands for VS Code command palette ---
+    // These are for the extension's command registrations
+
+    // Paste handler for model code (just calls handlePaste on selection or clipboard)
+    public async handleModelPaste() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        let text = editor.document.getText(editor.selection);
+        if (!text) {
+            // fallback to clipboard if nothing selected
+            text = await vscode.env.clipboard.readText();
+        }
+        if (!text) {
+            vscode.window.showWarningMessage('No text selected or in clipboard to smart-paste.');
+            return;
+        }
+        await this.handlePaste(text);
+    }
+
+    // Fix data paths in selection or whole doc
+    public async fixDataPath() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        let range: vscode.Range;
+        if (!editor.selection.isEmpty) {
+            range = editor.selection;
+        } else {
+            // whole doc if nothing selected
+            const lastLine = editor.document.lineCount - 1;
+            range = new vscode.Range(0, 0, lastLine, editor.document.lineAt(lastLine).text.length);
+        }
+        const text = editor.document.getText(range);
+        const result = await this.fixFilePaths(text);
+        if (result.fixed) {
+            await editor.edit(editBuilder => {
+                editBuilder.replace(range, result.text);
+            });
+            vscode.window.showInformationMessage('Fixed data paths in your code.');
+        } else {
+            vscode.window.showInformationMessage('No data paths needed fixing.');
+        }
+    }
+
+    // Sanitize notebook/colab code in selection or whole doc
+    public async sanitizeNotebook() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        let range: vscode.Range;
+        if (!editor.selection.isEmpty) {
+            range = editor.selection;
+        } else {
+            // whole doc if nothing selected
+            const lastLine = editor.document.lineCount - 1;
+            range = new vscode.Range(0, 0, lastLine, editor.document.lineAt(lastLine).text.length);
+        }
+        const text = editor.document.getText(range);
+        const sanitized = this.sanitizeColabCode(text);
+        if (sanitized !== text) {
+            await editor.edit(editBuilder => {
+                editBuilder.replace(range, sanitized);
+            });
+            vscode.window.showInformationMessage('Cleaned up notebook/Colab code.');
+        } else {
+            vscode.window.showInformationMessage('No notebook/Colab code to clean.');
+        }
+    }
+
+    // Check for version conflicts in selection or whole doc
+    public async checkVersions() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        let range: vscode.Range;
+        if (!editor.selection.isEmpty) {
+            range = editor.selection;
+        } else {
+            // whole doc if nothing selected
+            const lastLine = editor.document.lineCount - 1;
+            range = new vscode.Range(0, 0, lastLine, editor.document.lineAt(lastLine).text.length);
+        }
+        const text = editor.document.getText(range);
+        const warnings = await this.checkVersionConflicts(text);
+        if (warnings.length > 0) {
+            vscode.window.showWarningMessage('Version issues: ' + warnings.join('; '));
+        } else {
+            vscode.window.showInformationMessage('No version conflicts found.');
+        }
     }
 }

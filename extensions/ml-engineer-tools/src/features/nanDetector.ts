@@ -9,30 +9,30 @@ export class NaNDetector {
         { pattern: /nn\.Linear\([^)]*\)/g, risk: 'medium', message: 'Linear layer without proper initialization' },
         { pattern: /nn\.LSTM\([^)]*\)/g, risk: 'high', message: 'LSTM prone to exploding gradients' },
         { pattern: /nn\.GRU\([^)]*\)/g, risk: 'high', message: 'GRU prone to exploding gradients' },
-        
+
         // Activation functions
         { pattern: /F\.sigmoid\(/g, risk: 'high', message: 'Sigmoid activation prone to saturation' },
         { pattern: /F\.tanh\(/g, risk: 'medium', message: 'Tanh activation can saturate' },
         { pattern: /F\.softmax\(/g, risk: 'medium', message: 'Softmax can overflow without proper scaling' },
-        
+
         // Operations prone to NaN
         { pattern: /torch\.log\(/g, risk: 'high', message: 'Log of zero or negative values causes NaN' },
         { pattern: /torch\.sqrt\(/g, risk: 'medium', message: 'Square root of negative values causes NaN' },
         { pattern: /torch\.div\(/g, risk: 'high', message: 'Division by zero causes NaN/Inf' },
         { pattern: /\/(?!\*)/g, risk: 'high', message: 'Division operation - check for zero denominators' },
-        
+
         // Loss functions
         { pattern: /F\.cross_entropy\(/g, risk: 'medium', message: 'Cross entropy can explode with extreme logits' },
         { pattern: /F\.nll_loss\(/g, risk: 'medium', message: 'NLL loss requires log probabilities' },
         { pattern: /F\.mse_loss\(/g, risk: 'low', message: 'MSE can grow very large' },
-        
+
         // Batch normalization without proper setup
         { pattern: /nn\.BatchNorm[12]d\([^)]*\)/g, risk: 'medium', message: 'BatchNorm requires proper training/eval mode' },
-        
+
         // Large learning rates patterns
         { pattern: /lr\s*=\s*[1-9]\d*\.?\d*/g, risk: 'high', message: 'Large learning rate can cause instability' },
         { pattern: /learning_rate\s*=\s*[1-9]\d*\.?\d*/g, risk: 'high', message: 'Large learning rate can cause instability' },
-        
+
         // Gradient operations
         { pattern: /\.backward\(\)/g, risk: 'medium', message: 'Check for gradient explosion/vanishing' },
         { pattern: /torch\.autograd\.grad\(/g, risk: 'medium', message: 'Manual gradient computation can be unstable' }
@@ -72,7 +72,7 @@ export class NaNDetector {
 
         const text = document.getText();
         const detections = this.analyzeForNaNRisks(text);
-        
+
         this.applyDecorations(editor, detections);
     }
 
@@ -94,18 +94,18 @@ export class NaNDetector {
             this.nanPronePatterns.forEach(({ pattern, risk, message }) => {
                 pattern.lastIndex = 0; // Reset regex
                 let match;
-                
+
                 while ((match = pattern.exec(line)) !== null) {
                     const startPos = match.index;
                     const endPos = match.index + match[0].length;
-                    
+
                     const range = new vscode.Range(
                         lineIndex, startPos,
                         lineIndex, endPos
                     );
 
                     const suggestion = this.getSuggestion(match[0], risk);
-                    
+
                     detections.push({
                         range,
                         risk: risk as 'high' | 'medium' | 'low',
@@ -142,7 +142,7 @@ export class NaNDetector {
             if (match) {
                 const startPos = line.indexOf(match[0]);
                 const endPos = startPos + match[0].length;
-                
+
                 risks.push({
                     range: new vscode.Range(lineIndex, startPos, lineIndex, endPos),
                     risk: 'medium',
@@ -222,11 +222,11 @@ export class NaNDetector {
             hoverMessage.isTrusted = true;
             hoverMessage.appendMarkdown(`**⚠️ NaN Risk (${detection.risk.toUpperCase()})**\n\n`);
             hoverMessage.appendMarkdown(`${detection.message}\n\n`);
-            
+
             if (detection.suggestion) {
                 hoverMessage.appendMarkdown(`**💡 Suggestion:** ${detection.suggestion}\n\n`);
             }
-            
+
             hoverMessage.appendMarkdown(`[Fix Automatically](command:mlTools.fixNaNRisk?${encodeURIComponent(JSON.stringify({
                 range: detection.range,
                 suggestion: detection.suggestion
@@ -326,7 +326,7 @@ export class NaNDetector {
 
 ## Risk Summary
 - 🔴 **High Risk:** ${riskCounts.high} issues
-- 🟡 **Medium Risk:** ${riskCounts.medium} issues  
+- 🟡 **Medium Risk:** ${riskCounts.medium} issues
 - 🟢 **Low Risk:** ${riskCounts.low} issues
 
 ## Detailed Findings
@@ -358,18 +358,18 @@ ${riskCounts.medium > 3 ? '- ⚠️ Consider refactoring medium-risk patterns' :
 <html>
 <head>
     <style>
-        body { 
+        body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 20px; 
+            padding: 20px;
             line-height: 1.6;
             color: var(--vscode-editor-foreground);
             background: var(--vscode-editor-background);
         }
         h1, h2, h3 { color: var(--vscode-textLink-foreground); }
-        code { 
-            background: var(--vscode-textBlockQuote-background); 
-            padding: 2px 4px; 
-            border-radius: 3px; 
+        code {
+            background: var(--vscode-textBlockQuote-background);
+            padding: 2px 4px;
+            border-radius: 3px;
         }
         .high-risk { color: #ff4444; }
         .medium-risk { color: #ffaa00; }
@@ -380,7 +380,7 @@ ${riskCounts.medium > 3 ? '- ⚠️ Consider refactoring medium-risk patterns' :
     <div id="content"></div>
     <script>
         const report = ${JSON.stringify(report)};
-        document.getElementById('content').innerHTML = 
+        document.getElementById('content').innerHTML =
             report.replace(/\\n/g, '<br>')
                   .replace(/🔴/g, '<span class="high-risk">🔴</span>')
                   .replace(/🟡/g, '<span class="medium-risk">🟡</span>')
@@ -388,5 +388,18 @@ ${riskCounts.medium > 3 ? '- ⚠️ Consider refactoring medium-risk patterns' :
     </script>
 </body>
 </html>`;
+    }
+
+    // Show a quick alert if NaN-prone patterns are found in the current editor
+    public async showNaNAlert() {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        const text = editor.document.getText();
+        const detections = this.analyzeForNaNRisks(text);
+        if (detections.length > 0) {
+            vscode.window.showWarningMessage(`Heads up! Found ${detections.length} NaN-prone pattern${detections.length > 1 ? 's' : ''} in this file.`, { modal: false });
+        } else {
+            vscode.window.showInformationMessage('No obvious NaN-prone patterns found. Looks good!');
+        }
     }
 }

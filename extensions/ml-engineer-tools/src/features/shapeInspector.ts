@@ -7,13 +7,13 @@ export class ShapeInspector implements vscode.HoverProvider {
         /torch\.tensor\s*\(\s*([^,)]+)(?:,\s*dtype=[^,)]+)?(?:,\s*device=[^,)]+)?\)/g,
         /\.(?:view|reshape|permute|transpose)\s*\(\s*([^)]+)\)/g,
         /nn\.(?:Linear|Conv2d|Conv1d|ConvTranspose2d)\s*\(\s*([^)]+)\)/g,
-        
+
         // TensorFlow patterns
         /tf\.(?:zeros|ones|random\.normal|random\.uniform|constant)\s*\(\s*([^,)]+)/g,
         /tf\.Variable\s*\(\s*([^,)]+)/g,
         /tf\.reshape\s*\(\s*[^,]+,\s*([^)]+)\)/g,
         /tf\.keras\.layers\.(?:Dense|Conv2D|Conv1D)\s*\(\s*([^,)]+)/g,
-        
+
         // NumPy patterns
         /np\.(?:zeros|ones|random\.randn|random\.rand|empty|full)\s*\(\s*([^)]+)\)/g,
         /np\.array\s*\(\s*([^,)]+)/g,
@@ -33,7 +33,7 @@ export class ShapeInspector implements vscode.HoverProvider {
 
         const line = document.lineAt(position.line);
         const wordRange = document.getWordRangeAtPosition(position);
-        
+
         if (!wordRange) {
             return;
         }
@@ -43,23 +43,23 @@ export class ShapeInspector implements vscode.HoverProvider {
 
         // Check if hovering over a tensor variable
         const tensorInfo = this.analyzeTensorShape(lineText, word, document, position);
-        
+
         if (tensorInfo) {
             const markdown = new vscode.MarkdownString();
             markdown.isTrusted = true;
-            
+
             markdown.appendMarkdown(`**🔍 Tensor Shape Analysis**\n\n`);
             markdown.appendMarkdown(`**Variable:** \`${word}\`\n\n`);
             markdown.appendMarkdown(`**Shape:** \`${tensorInfo.shape}\`\n\n`);
-            
+
             if (tensorInfo.dtype) {
                 markdown.appendMarkdown(`**Data Type:** \`${tensorInfo.dtype}\`\n\n`);
             }
-            
+
             if (tensorInfo.device) {
                 markdown.appendMarkdown(`**Device:** \`${tensorInfo.device}\`\n\n`);
             }
-            
+
             if (tensorInfo.memoryUsage) {
                 markdown.appendMarkdown(`**Memory:** \`${tensorInfo.memoryUsage}\`\n\n`);
             }
@@ -84,7 +84,7 @@ export class ShapeInspector implements vscode.HoverProvider {
         for (const pattern of this.tensorPatterns) {
             pattern.lastIndex = 0; // Reset regex
             const match = pattern.exec(lineText);
-            
+
             if (match && lineText.includes(word)) {
                 const shapeInfo = this.parseShapeFromMatch(match, lineText);
                 return {
@@ -100,22 +100,27 @@ export class ShapeInspector implements vscode.HoverProvider {
         // Look for variable assignments and track shapes
         const variablePattern = new RegExp(`${word}\\s*=\\s*(.+)`);
         const varMatch = variablePattern.exec(lineText);
-        
+
         if (varMatch) {
             const assignment = varMatch[1];
-            return this.analyzeAssignment(assignment, word);
+            const result = this.analyzeAssignment(assignment, word);
+            return {
+                ...result,
+                memoryUsage: result.memoryUsage // pass through if present, else undefined
+            };
         }
 
         // Look for method calls that might change shape
         const methodPattern = new RegExp(`${word}\\.(?:view|reshape|permute|transpose|squeeze|unsqueeze)\\s*\\(([^)]+)\\)`);
         const methodMatch = methodPattern.exec(lineText);
-        
+
         if (methodMatch) {
             return {
                 shape: this.parseShapeString(methodMatch[1]),
                 framework: this.detectFramework(lineText),
                 dtype: 'inferred',
-                device: 'inferred'
+                device: 'inferred',
+                memoryUsage: undefined // not known here
             };
         }
 
@@ -125,7 +130,7 @@ export class ShapeInspector implements vscode.HoverProvider {
     private parseShapeFromMatch(match: RegExpExecArray, lineText: string) {
         const shapeStr = match[1];
         const shape = this.parseShapeString(shapeStr);
-        
+
         return {
             shape,
             dtype: this.extractDataType(lineText),
@@ -136,7 +141,7 @@ export class ShapeInspector implements vscode.HoverProvider {
     private parseShapeString(shapeStr: string): string {
         // Clean up the shape string
         let cleaned = shapeStr.trim();
-        
+
         // Handle common patterns
         if (cleaned.includes('[') && cleaned.includes(']')) {
             // Extract dimensions from brackets
@@ -145,12 +150,12 @@ export class ShapeInspector implements vscode.HoverProvider {
                 return `(${dimensions.join(', ')})`;
             }
         }
-        
+
         // Handle tuple format
         if (cleaned.includes('(') && cleaned.includes(')')) {
             return cleaned;
         }
-        
+
         // Handle comma-separated values
         if (cleaned.includes(',')) {
             const parts = cleaned.split(',').map(p => p.trim()).filter(p => /^\d+$/.test(p));
@@ -158,12 +163,12 @@ export class ShapeInspector implements vscode.HoverProvider {
                 return `(${parts.join(', ')})`;
             }
         }
-        
+
         // Handle single dimension
         if (/^\d+$/.test(cleaned)) {
             return `(${cleaned},)`;
         }
-        
+
         return '(unknown)';
     }
 
@@ -173,14 +178,14 @@ export class ShapeInspector implements vscode.HoverProvider {
             /\.(?:float|int|long|double|half)\(\)/,
             /astype\s*\(\s*([^)]+)\)/
         ];
-        
+
         for (const pattern of dtypePatterns) {
             const match = pattern.exec(lineText);
             if (match) {
                 return match[1];
             }
         }
-        
+
         return undefined;
     }
 
@@ -190,14 +195,14 @@ export class ShapeInspector implements vscode.HoverProvider {
             /\.(?:cuda|cpu)\(\)/,
             /\.to\s*\(\s*['"]([^'"]+)['"]\)/
         ];
-        
+
         for (const pattern of devicePatterns) {
             const match = pattern.exec(lineText);
             if (match) {
                 return match[1];
             }
         }
-        
+
         return undefined;
     }
 
@@ -219,11 +224,11 @@ export class ShapeInspector implements vscode.HoverProvider {
         if (!dimensions) {
             return 'unknown';
         }
-        
+
         const totalElements = dimensions.reduce((acc, dim) => acc * parseInt(dim), 1);
         const bytesPerElement = this.getBytesPerElement(dtype);
         const totalBytes = totalElements * bytesPerElement;
-        
+
         if (totalBytes < 1024) {
             return `${totalBytes} bytes`;
         } else if (totalBytes < 1024 * 1024) {
@@ -237,7 +242,7 @@ export class ShapeInspector implements vscode.HoverProvider {
 
     private getBytesPerElement(dtype?: string): number {
         if (!dtype) return 4; // Default to float32
-        
+
         if (dtype.includes('float64') || dtype.includes('double')) return 8;
         if (dtype.includes('float32') || dtype.includes('float')) return 4;
         if (dtype.includes('float16') || dtype.includes('half')) return 2;
@@ -246,7 +251,7 @@ export class ShapeInspector implements vscode.HoverProvider {
         if (dtype.includes('int16') || dtype.includes('short')) return 2;
         if (dtype.includes('int8') || dtype.includes('byte')) return 1;
         if (dtype.includes('bool')) return 1;
-        
+
         return 4; // Default
     }
 
@@ -257,7 +262,8 @@ export class ShapeInspector implements vscode.HoverProvider {
             shape: '(inferred)',
             framework: this.detectFramework(assignment),
             dtype: 'inferred',
-            device: 'inferred'
+            device: 'inferred',
+            memoryUsage: undefined // not known here
         };
     }
 }
