@@ -1,6 +1,6 @@
 {
-	"nameShort": "Void",
-	"nameLong": "Void",
+	"nameShort": "void",
+	"nameLong": "void",
 	"voidVersion": "1.4.9",
 	"voidRelease": "0044",
 	"applicationName": "void",
@@ -41,6 +41,8 @@
 		"https://voideditor.com",
 		"https://voideditor.dev",
 		"https://github.com/voideditor/void",
-		"https://ollama.com"
+		"https://ollama.com",
+		"https://bhasha.tech",
+		"https://colab.research.google.com"
 	]
 }

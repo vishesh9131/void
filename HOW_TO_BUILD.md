@@ -80,15 +80,15 @@ brew install python@3
    ```
 
 2. **Install Node.js v20.18.2**
-   
+
    Using nvm (recommended):
    ```bash
    # Install nvm if you don't have it
    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-   
+
    # Reload your shell configuration
    source ~/.bashrc  # or ~/.zshrc for zsh
-   
+
    # Install and use the correct Node version
    nvm install 20.18.2
    nvm use 20.18.2
@@ -205,7 +205,7 @@ npm run test:web
    ```bash
    # Linux
    sudo apt-get install -y build-essential g++ libkrb5-dev
-   
+
    # macOS
    brew install krb5
    ```
@@ -287,7 +287,7 @@ $ npm run buildreact
 ESM ⚡️ Build success in 3491ms
 ✅ Build complete!
 
-$ npm run compile
+$ NODE_OPTIONS="--max-old-space-size=8192" npm run compile
 > code-oss-dev@1.99.3 compile
 > node ./node_modules/gulp/bin/gulp.js compile
 
