@@ -1,6 +1,4 @@
 {
-	"nameShort": "VS Aware",
-	"nameLong": "VS Aware",
 	"voidVersion": "1.4.9",
 	"voidRelease": "0044",
 	"applicationName": "vs-aware",
@@ -41,6 +39,8 @@
 		"https://voideditor.com",
 		"https://voideditor.dev",
 		"https://github.com/voideditor/void",
-		"https://ollama.com"
+		"https://ollama.com",
+		"https://bhasha.tech",
+		"https://colab.research.google.com"
 	]
 }
