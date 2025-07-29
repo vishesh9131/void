@@ -3,17 +3,15 @@
  *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
  *--------------------------------------------------------------------------------------*/
 
-import { Action } from '../../../../base/common/actions.js';
 import { localize } from '../../../../nls.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
-import { registerAction2, MenuId, MenuRegistry, Action2, IAction2Options } from '../../../../platform/actions/common/actions.js';
+import { registerAction2, MenuId, MenuRegistry, Action2 } from '../../../../platform/actions/common/actions.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IAutoMLService } from '../common/autoMLService.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
-import { ThemeIcon } from '../../../../base/common/themables.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 
 // Action IDs
@@ -32,7 +30,7 @@ class AnalyzeDatasetAction extends Action2 {
 				value: localize('analyzeDataset', 'Generate Model Prototype'),
 				original: 'Generate Model Prototype'
 			},
-			icon: ThemeIcon.fromId(Codicon.symbolEvent),
+			icon: Codicon.symbolEvent,
 			menu: {
 				id: MenuId.ExplorerContext,
 				when: DATASET_FILE_CONTEXT,
@@ -80,7 +78,7 @@ class GenerateModelPrototypeAction extends Action2 {
 				value: localize('generateModelPrototype', 'Generate Model Code'),
 				original: 'Generate Model Code'
 			},
-			icon: ThemeIcon.fromId(Codicon.code),
+			icon: Codicon.code,
 			menu: {
 				id: MenuId.CommandPalette,
 				when: ContextKeyExpr.true()
@@ -92,6 +90,7 @@ class GenerateModelPrototypeAction extends Action2 {
 		const autoMLService = accessor.get(IAutoMLService);
 		const notificationService = accessor.get(INotificationService);
 		const dialogService = accessor.get(IDialogService);
+		const commandService = accessor.get(ICommandService);
 
 		if (!analysisResult) {
 			notificationService.warn(localize('noAnalysisResult', 'Please analyze a dataset first'));
@@ -103,32 +102,17 @@ class GenerateModelPrototypeAction extends Action2 {
 			
 			if (!selectedFramework) {
 				// Show framework selection dialog
-				const frameworkOptions = [
-					{ label: 'scikit-learn (Recommended for beginners)', value: 'sklearn' },
-					{ label: 'PyTorch (Deep learning)', value: 'pytorch' },
-					{ label: 'TensorFlow (Production ML)', value: 'tensorflow' }
-				];
+						const result = await dialogService.confirm({
+			message: localize('selectFramework', 'Select ML Framework'),
+			detail: localize('frameworkDetail', 'Choose the machine learning framework for code generation'),
+			primaryButton: localize('sklearn', 'scikit-learn')
+		});
 
-				const result = await dialogService.show(
-					'info',
-					localize('selectFramework', 'Select ML Framework'),
-					[
-						localize('sklearn', 'scikit-learn'),
-						localize('pytorch', 'PyTorch'),
-						localize('tensorflow', 'TensorFlow'),
-						localize('cancel', 'Cancel')
-					],
-					{
-						detail: localize('frameworkDetail', 'Choose the machine learning framework for code generation')
-					}
-				);
-
-				switch (result.choice) {
-					case 0: selectedFramework = 'sklearn'; break;
-					case 1: selectedFramework = 'pytorch'; break;
-					case 2: selectedFramework = 'tensorflow'; break;
-					default: return; // Cancel
-				}
+						if (result.confirmed) {
+			selectedFramework = 'sklearn';
+		} else {
+			return; // Cancel
+		}
 			}
 
 			const code = await autoMLService.generateModelPrototype(analysisResult.analysis, selectedFramework);
@@ -160,7 +144,7 @@ class OpenAutoMLPanelAction extends Action2 {
 				value: localize('openAutoMLPanel', 'Open AutoML Assistant'),
 				original: 'Open AutoML Assistant'
 			},
-			icon: ThemeIcon.fromId(Codicon.hubot),
+			icon: Codicon.hubot,
 			menu: [
 				{
 					id: MenuId.ViewTitle,
@@ -199,46 +183,20 @@ MenuRegistry.appendMenuItem(MenuId.ExplorerContext, {
 	command: {
 		id: ANALYZE_DATASET_ACTION_ID,
 		title: localize('quickAnalyze', 'Quick ML Analysis'),
-		icon: ThemeIcon.fromId(Codicon.graph)
+		icon: Codicon.graph
 	},
 	when: DATASET_FILE_CONTEXT,
 	group: 'vsaware@1'
 });
 
-// Add submenu for advanced AutoML options
+// Additional menu items for AutoML
 MenuRegistry.appendMenuItem(MenuId.ExplorerContext, {
-	submenu: 'vsaware.automl.submenu',
-	title: localize('automlOptions', 'AutoML Options'),
-	when: DATASET_FILE_CONTEXT,
-	group: 'vsaware@2'
-});
-
-// Register submenu
-MenuRegistry.addSubmenu('vsaware.automl.submenu', localize('automlSubmenu', 'AutoML'), MenuId.ExplorerContext);
-
-// Add items to submenu
-MenuRegistry.appendMenuItem('vsaware.automl.submenu', {
 	command: {
 		id: ANALYZE_DATASET_ACTION_ID,
 		title: localize('fullAnalysis', 'Full Dataset Analysis')
 	},
-	order: 1
-});
-
-MenuRegistry.appendMenuItem('vsaware.automl.submenu', {
-	command: {
-		id: 'vsaware.automl.dataProfiler',
-		title: localize('dataProfiler', 'Data Profiling Report')
-	},
-	order: 2
-});
-
-MenuRegistry.appendMenuItem('vsaware.automl.submenu', {
-	command: {
-		id: 'vsaware.automl.hyperparameterTuning',
-		title: localize('hyperparameterTuning', 'Hyperparameter Tuning')
-	},
-	order: 3
+	when: DATASET_FILE_CONTEXT,
+	group: 'vsaware@2'
 });
 
 // Data profiler action
@@ -308,24 +266,15 @@ class HyperparameterTuningAction extends Action2 {
 			return;
 		}
 
-		// Show hyperparameter tuning options
-		const result = await dialogService.show(
-			'info',
-			localize('hyperparameterOptions', 'Hyperparameter Tuning Options'),
-			[
-				localize('gridSearch', 'Grid Search'),
-				localize('randomSearch', 'Random Search'),
-				localize('bayesianOptimization', 'Bayesian Optimization'),
-				localize('cancel', 'Cancel')
-			],
-			{
-				detail: localize('hyperparameterDetail', 'Select the hyperparameter optimization method')
-			}
-		);
+			// Show hyperparameter tuning options
+	const result = await dialogService.confirm({
+		message: localize('hyperparameterOptions', 'Hyperparameter Tuning Options'),
+		detail: localize('hyperparameterDetail', 'Select the hyperparameter optimization method'),
+		primaryButton: localize('gridSearch', 'Grid Search')
+	});
 
-		if (result.choice < 3) {
-			const methods = ['grid_search', 'random_search', 'bayesian_optimization'];
-			const selectedMethod = methods[result.choice];
+	if (result.confirmed) {
+		const selectedMethod = 'grid_search';
 
 			notificationService.info(
 				localize('tuningStarted', 'Starting hyperparameter tuning with {0}...', selectedMethod)
