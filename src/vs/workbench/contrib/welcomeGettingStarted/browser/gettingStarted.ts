@@ -73,6 +73,7 @@ import { AccessibilityVerbositySettingId } from '../../accessibility/browser/acc
 import { AccessibleViewAction } from '../../accessibility/browser/accessibleViewActions.js';
 import { KeybindingLabel } from '../../../../base/browser/ui/keybindingLabel/keybindingLabel.js';
 import { ScrollbarVisibility } from '../../../../base/common/scrollable.js';
+import { FileAccess } from '../../../../base/common/network.js';
 
 const SLIDE_TRANSITION_TIME_MS = 250;
 const configurationKey = 'workbench.startupEditor';
@@ -835,6 +836,10 @@ export class GettingStartedPage extends EditorPane {
 		this.detailsPageScrollbar.scanDomNode();
 
 		parent.appendChild(this.container);
+
+		const watermark = $<HTMLImageElement>('img.watermark');
+		watermark.src = FileAccess.asBrowserUri('vs/workbench/contrib/welcomeGettingStarted/common/media/dark.png').toString();
+		this.container.appendChild(watermark);
 	}
 
 	private async buildCategoriesSlide() {
