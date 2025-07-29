@@ -140,7 +140,7 @@ export interface ITensorVisualizerService {
 
 	// Hover functionality
 	getHoverInfo(code: string, position: Position): Promise<HoverInfo | undefined>;
-	
+
 	// Code execution for inspection
 	executeInspectionCode(code: string): Promise<any>;
 }
@@ -330,7 +330,7 @@ export class TensorVisualizerService extends Disposable implements ITensorVisual
 
 	async generateDataFrameVisualization(dataFrameInfo: DataFrameInfo, column?: string, type?: string): Promise<TensorVisualization> {
 		const visualizationType = type as TensorVisualization['type'] || 'histogram';
-		
+
 		const visualization: TensorVisualization = {
 			type: visualizationType,
 			data: this._generateMockDataFrameVisualization(dataFrameInfo, column, visualizationType),
@@ -358,7 +358,7 @@ export class TensorVisualizerService extends Disposable implements ITensorVisual
 	async reduceDimensionality(data: number[][], method: DimensionalityReduction['method'], targetDimensions: number): Promise<DimensionalityReduction> {
 		// Mock dimensionality reduction
 		const originalDimensions = data[0]?.length || 0;
-		const reducedData = data.map(() => 
+		const reducedData = data.map(() =>
 			Array.from({ length: targetDimensions }, () => Math.random() * 10 - 5)
 		);
 
@@ -444,7 +444,7 @@ export class TensorVisualizerService extends Disposable implements ITensorVisual
 				};
 			case 'heatmap':
 				const size = Math.min(tensorInfo.shape[0] || 32, 32);
-				return Array.from({ length: size }, () => 
+				return Array.from({ length: size }, () =>
 					Array.from({ length: size }, () => Math.random())
 				);
 			case 'line':
@@ -479,7 +479,7 @@ export class TensorVisualizerService extends Disposable implements ITensorVisual
 			case 'heatmap':
 				// Correlation matrix
 				const numCols = dataFrameInfo.columns.length;
-				return Array.from({ length: numCols }, () => 
+				return Array.from({ length: numCols }, () =>
 					Array.from({ length: numCols }, () => Math.random() * 2 - 1)
 				);
 			default:

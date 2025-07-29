@@ -1,6 +1,8 @@
 {
 	"voidVersion": "1.4.9",
 	"voidRelease": "0044",
+	"nameLong": "VS Aware",
+	"nameShort": "vs-aware",
 	"applicationName": "vs-aware",
 	"dataFolderName": ".vs-aware",
 	"win32MutexName": "vsaware",
