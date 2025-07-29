@@ -460,10 +460,12 @@ export class GPUResourceService extends Disposable implements IGPUResourceServic
 		// Fire alerts
 		for (const alert of alerts) {
 			// Add to state alerts (keep only recent alerts)
-			this._state.alerts.push(alert);
-			this._state.alerts = this._state.alerts
+			const currentAlerts = [...this._state.alerts, alert]
 				.filter(a => Date.now() - a.timestamp.getTime() < 300000) // Keep alerts for 5 minutes
 				.slice(-10); // Keep only last 10 alerts
+			
+			// Update state with new alerts array
+			(this._state as any).alerts = currentAlerts;
 
 			this._onDidTriggerAlert.fire(alert);
 		}
