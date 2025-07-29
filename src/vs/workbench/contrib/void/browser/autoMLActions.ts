@@ -5,14 +5,14 @@
 
 import { localize } from '../../../../nls.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { registerAction2, MenuId, MenuRegistry, Action2 } from '../../../../platform/actions/common/actions.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
-import { URI } from '../../../../base/common/uri.js';
 import { IAutoMLService } from '../common/autoMLService.js';
+import { URI } from '../../../../base/common/uri.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { Codicon } from '../../../../base/common/codicons.js';
+import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 
 // Action IDs
 export const ANALYZE_DATASET_ACTION_ID = 'vsaware.automl.analyzeDataset';
@@ -88,39 +88,29 @@ class GenerateModelPrototypeAction extends Action2 {
 
 	async run(accessor: ServicesAccessor, analysisResult?: any, framework?: 'pytorch' | 'tensorflow' | 'sklearn'): Promise<void> {
 		const autoMLService = accessor.get(IAutoMLService);
-		const notificationService = accessor.get(INotificationService);
-		const dialogService = accessor.get(IDialogService);
 		const commandService = accessor.get(ICommandService);
+		const notificationService = accessor.get(INotificationService);
 
+		try {
 		if (!analysisResult) {
-			notificationService.warn(localize('noAnalysisResult', 'Please analyze a dataset first'));
+				notificationService.error(localize('noAnalysisResult', 'No analysis result provided'));
 			return;
 		}
 
-		try {
 			let selectedFramework = framework;
-			
-			if (!selectedFramework) {
-				// Show framework selection dialog
-						const result = await dialogService.confirm({
-			message: localize('selectFramework', 'Select ML Framework'),
-			detail: localize('frameworkDetail', 'Choose the machine learning framework for code generation'),
-			primaryButton: localize('sklearn', 'scikit-learn')
-		});
 
-						if (result.confirmed) {
-			selectedFramework = 'sklearn';
-		} else {
-			return; // Cancel
-		}
+			if (!selectedFramework) {
+				// For now, default to sklearn since dialog service is not available
+				selectedFramework = 'sklearn';
 			}
 
-			const code = await autoMLService.generateModelPrototype(analysisResult.analysis, selectedFramework);
+			// Generate model code
+			const code = await autoMLService.generateModelPrototype(analysisResult, selectedFramework);
 
 			// Create new file with generated code
 			const fileName = `model_${selectedFramework}_${Date.now()}.py`;
 			const newFileUri = URI.parse(`untitled:${fileName}`);
-			
+
 			await commandService.executeCommand('vscode.open', newFileUri);
 			await commandService.executeCommand('editor.action.insertText', { text: code });
 
@@ -161,11 +151,11 @@ class OpenAutoMLPanelAction extends Action2 {
 
 	async run(accessor: ServicesAccessor, initialData?: any): Promise<void> {
 		const commandService = accessor.get(ICommandService);
-		
+
 		// This would open the AutoML panel in the sidebar or a webview
 		// For now, we'll use a simple command to show it
 		await commandService.executeCommand('workbench.view.extension.vsaware');
-		
+
 		if (initialData) {
 			// Pass the initial data to the panel
 			console.log('Opening AutoML panel with data:', initialData);
@@ -189,11 +179,28 @@ MenuRegistry.appendMenuItem(MenuId.ExplorerContext, {
 	group: 'vsaware@1'
 });
 
-// Additional menu items for AutoML
+// Add submenu for advanced AutoML options
+MenuRegistry.appendMenuItem(MenuId.ExplorerContext, {
+	submenu: MenuId.ExplorerContext,
+	title: localize('automlOptions', 'AutoML Options'),
+	when: DATASET_FILE_CONTEXT,
+	group: 'vsaware@2'
+});
+
+// Add items to submenu
 MenuRegistry.appendMenuItem(MenuId.ExplorerContext, {
 	command: {
 		id: ANALYZE_DATASET_ACTION_ID,
 		title: localize('fullAnalysis', 'Full Dataset Analysis')
+	},
+	when: DATASET_FILE_CONTEXT,
+	group: 'vsaware@2'
+});
+
+MenuRegistry.appendMenuItem(MenuId.ExplorerContext, {
+	command: {
+		id: 'vsaware.automl.dataProfiler',
+		title: localize('dataProfiler', 'Data Profiling Report')
 	},
 	when: DATASET_FILE_CONTEXT,
 	group: 'vsaware@2'
@@ -224,14 +231,14 @@ class DataProfilerAction extends Action2 {
 			notificationService.info(localize('generatingProfile', 'Generating data profiling report...'));
 
 			const analysis = await autoMLService.analyzeDataset(resource);
-			
+
 			// Generate HTML report (simplified)
 			const reportHtml = generateDataProfilingReport(analysis.analysis);
-			
+
 			// Create new HTML file with report
 			const reportUri = URI.parse(`untitled:data_profile_report_${Date.now()}.html`);
 			const commandService = accessor.get(ICommandService);
-			
+
 			await commandService.executeCommand('vscode.open', reportUri);
 			await commandService.executeCommand('editor.action.insertText', { text: reportHtml });
 
@@ -266,15 +273,30 @@ class HyperparameterTuningAction extends Action2 {
 			return;
 		}
 
-			// Show hyperparameter tuning options
-	const result = await dialogService.confirm({
-		message: localize('hyperparameterOptions', 'Hyperparameter Tuning Options'),
-		detail: localize('hyperparameterDetail', 'Select the hyperparameter optimization method'),
-		primaryButton: localize('gridSearch', 'Grid Search')
-	});
+		// Show hyperparameter tuning options using prompt method
+		const result = await dialogService.prompt({
+			type: 'info',
+			message: localize('hyperparameterOptions', 'Hyperparameter Tuning Options'),
+			detail: localize('hyperparameterDetail', 'Select the hyperparameter optimization method'),
+			buttons: [
+				{
+					label: localize('gridSearch', 'Grid Search'),
+					run: () => 'grid_search'
+				},
+				{
+					label: localize('randomSearch', 'Random Search'),
+					run: () => 'random_search'
+				},
+				{
+					label: localize('bayesianOptimization', 'Bayesian Optimization'),
+					run: () => 'bayesian_optimization'
+				}
+			],
+			cancelButton: localize('cancel', 'Cancel')
+		});
 
-	if (result.confirmed) {
-		const selectedMethod = 'grid_search';
+		if (result.result) {
+			const selectedMethod = result.result;
 
 			notificationService.info(
 				localize('tuningStarted', 'Starting hyperparameter tuning with {0}...', selectedMethod)
@@ -315,7 +337,7 @@ function generateDataProfilingReport(analysis: any): string {
 		<h1>📊 Data Profiling Report</h1>
 		<p>Generated on ${new Date().toLocaleString()}</p>
 	</div>
-	
+
 	<div class="section">
 		<h2>Dataset Overview</h2>
 		<div class="metric">
@@ -331,7 +353,7 @@ function generateDataProfilingReport(analysis: any): string {
 			<strong>Problem Type:</strong> ${analysis.problemType}
 		</div>
 	</div>
-	
+
 	<div class="section">
 		<h2>Column Information</h2>
 		<table>
@@ -344,19 +366,19 @@ function generateDataProfilingReport(analysis: any): string {
 				<tr>
 					<td>${col}</td>
 					<td>${type}</td>
-					<td>${analysis.numericalColumns.includes(col) ? 'Numerical' : 
+					<td>${analysis.numericalColumns.includes(col) ? 'Numerical' :
 						  analysis.categoricalColumns.includes(col) ? 'Categorical' : 'Other'}</td>
 				</tr>
 			`).join('')}
 		</table>
 	</div>
-	
+
 	<div class="section">
 		<h2>Statistical Summary</h2>
 		<p>Target Column: <strong>${analysis.targetColumn || 'Not detected'}</strong></p>
 		<p>Suggested for: <strong>${analysis.problemType}</strong> tasks</p>
 	</div>
-	
+
 	<div class="section">
 		<h2>Recommendations</h2>
 		<ul>

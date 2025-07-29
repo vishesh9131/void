@@ -125,7 +125,7 @@ export class GPUResourceService extends Disposable implements IGPUResourceServic
 
 	constructor() {
 		super();
-		
+
 		this._thresholds = {
 			memoryWarning: 80,
 			memoryCritical: 95,
@@ -251,7 +251,7 @@ export class GPUResourceService extends Disposable implements IGPUResourceServic
 		try {
 			// Mock GPU utilization data
 			const utilizations: GPUUtilization[] = [];
-			
+
 			for (const gpu of this._state.gpus) {
 				if (gpuId !== undefined && gpu.id !== gpuId) {
 					continue;
@@ -298,7 +298,7 @@ export class GPUResourceService extends Disposable implements IGPUResourceServic
 		try {
 			// Mock TPU utilization data
 			const utilizations: TPUUtilization[] = [];
-			
+
 			for (const tpu of this._state.tpus) {
 				if (tpuName !== undefined && tpu.name !== tpuName) {
 					continue;
@@ -353,14 +353,14 @@ export class GPUResourceService extends Disposable implements IGPUResourceServic
 			const gpuUtilizationMap = new Map<number, GPUUtilization>();
 			for (const util of gpuUtilizations) {
 				gpuUtilizationMap.set(util.gpuId, util);
-				
+
 				// Store historical data
 				if (!this._historicalData.has(util.gpuId)) {
 					this._historicalData.set(util.gpuId, []);
 				}
 				const history = this._historicalData.get(util.gpuId)!;
 				history.push({ timestamp: new Date(), utilization: util });
-				
+
 				// Keep only last 1 hour of data
 				const cutoff = new Date(Date.now() - 3600 * 1000);
 				this._historicalData.set(util.gpuId, history.filter(entry => entry.timestamp > cutoff));
@@ -460,12 +460,15 @@ export class GPUResourceService extends Disposable implements IGPUResourceServic
 		// Fire alerts
 		for (const alert of alerts) {
 			// Add to state alerts (keep only recent alerts)
-			const currentAlerts = [...this._state.alerts, alert]
+			const updatedAlerts = [...this._state.alerts, alert]
 				.filter(a => Date.now() - a.timestamp.getTime() < 300000) // Keep alerts for 5 minutes
 				.slice(-10); // Keep only last 10 alerts
-			
-			// Update state with new alerts array
-			(this._state as any).alerts = currentAlerts;
+
+			// Update state with new alerts
+			this._state = {
+				...this._state,
+				alerts: updatedAlerts
+			};
 
 			this._onDidTriggerAlert.fire(alert);
 		}

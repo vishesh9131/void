@@ -23,6 +23,7 @@
     "ml"
   ],
   "activationEvents": [
+    "*",
     "onLanguage:python",
     "onLanguage:jupyter",
     "workspaceContains:**/*.py",
