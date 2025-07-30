@@ -18,7 +18,7 @@ git clone https://github.com/voideditor/void.git
 cd void
 npm install
 npm run buildreact
-npm run compile
+NODE_OPTIONS="--max-old-space-size=8192" npm run compile
 npm run download-builtin-extensions
 
 # Run the IDE
