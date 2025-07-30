@@ -155,6 +155,266 @@
             {
                 "command": "mlTools.scikitSnippet",
                 "title": "Add Scikit-Learn Pipeline"
+            },
+            {
+                "command": "mlTools.quickDataLoader",
+                "title": "🔥 Quick DataLoader Setup",
+                "icon": "$(database)"
+            },
+            {
+                "command": "mlTools.addDropout",
+                "title": "🛡️ Add Dropout Layer",
+                "icon": "$(shield)"
+            },
+            {
+                "command": "mlTools.batchNorm",
+                "title": "⚡ Add Batch Normalization",
+                "icon": "$(pulse)"
+            },
+            {
+                "command": "mlTools.lrScheduler",
+                "title": "📈 Add Learning Rate Scheduler",
+                "icon": "$(graph-line)"
+            },
+            {
+                "command": "mlTools.earlyStop",
+                "title": "🛑 Add Early Stopping",
+                "icon": "$(debug-pause)"
+            },
+            {
+                "command": "mlTools.tensorBoard",
+                "title": "📊 Setup TensorBoard Logging",
+                "icon": "$(pulse)"
+            },
+            {
+                "command": "mlTools.modelCheckpoint",
+                "title": "💾 Add Model Checkpointing",
+                "icon": "$(save)"
+            },
+            {
+                "command": "mlTools.gradClip",
+                "title": "✂️ Add Gradient Clipping",
+                "icon": "$(scissors)"
+            },
+            {
+                "command": "mlTools.weightInit",
+                "title": "🎯 Initialize Weights",
+                "icon": "$(target)"
+            },
+            {
+                "command": "mlTools.frozenLayers",
+                "title": "❄️ Freeze/Unfreeze Layers",
+                "icon": "$(lock)"
+            },
+            {
+                "command": "mlTools.activationViz",
+                "title": "🧠 Visualize Activations",
+                "icon": "$(eye)"
+            },
+            {
+                "command": "mlTools.confusionMatrix",
+                "title": "🎯 Generate Confusion Matrix",
+                "icon": "$(grid)"
+            },
+            {
+                "command": "mlTools.rocCurve",
+                "title": "📈 Plot ROC Curve",
+                "icon": "$(graph)"
+            },
+            {
+                "command": "mlTools.featureImportance",
+                "title": "⭐ Show Feature Importance",
+                "icon": "$(star)"
+            },
+            {
+                "command": "mlTools.dataAugment",
+                "title": "🔄 Add Data Augmentation",
+                "icon": "$(refresh)"
+            },
+            {
+                "command": "mlTools.crossValidation",
+                "title": "✅ Add Cross Validation",
+                "icon": "$(verified)"
+            },
+            {
+                "command": "mlTools.hyperTune",
+                "title": "🎛️ Hyperparameter Tuning",
+                "icon": "$(settings)"
+            },
+            {
+                "command": "mlTools.modelEnsemble",
+                "title": "🤝 Create Model Ensemble",
+                "icon": "$(organization)"
+            },
+            {
+                "command": "mlTools.transferLearning",
+                "title": "🔄 Setup Transfer Learning",
+                "icon": "$(arrow-right)"
+            },
+            {
+                "command": "mlTools.quantizeModel",
+                "title": "📦 Quantize Model",
+                "icon": "$(package)"
+            },
+            {
+                "command": "mlTools.pruneModel",
+                "title": "✂️ Prune Model",
+                "icon": "$(scissors)"
+            },
+            {
+                "command": "mlTools.onnxExport",
+                "title": "📤 Export to ONNX",
+                "icon": "$(export)"
+            },
+            {
+                "command": "mlTools.torchScript",
+                "title": "⚡ Convert to TorchScript",
+                "icon": "$(zap)"
+            },
+            {
+                "command": "mlTools.tensorRT",
+                "title": "🚀 Optimize with TensorRT",
+                "icon": "$(rocket)"
+            },
+            {
+                "command": "mlTools.profileModel",
+                "title": "⏱️ Profile Model Performance",
+                "icon": "$(watch)"
+            },
+            {
+                "command": "mlTools.memoryProfile",
+                "title": "💾 Memory Usage Profiler",
+                "icon": "$(dashboard)"
+            },
+            {
+                "command": "mlTools.flopsCounter",
+                "title": "🧮 Count FLOPs",
+                "icon": "$(calculator)"
+            },
+            {
+                "command": "mlTools.batchPredict",
+                "title": "🔮 Batch Prediction",
+                "icon": "$(preview)"
+            },
+            {
+                "command": "mlTools.gradCAM",
+                "title": "🔍 Generate Grad-CAM",
+                "icon": "$(search)"
+            },
+            {
+                "command": "mlTools.shapeInfer",
+                "title": "📐 Infer Tensor Shapes",
+                "icon": "$(symbol-ruler)"
+            },
+            {
+                "command": "mlTools.dataDistribution",
+                "title": "📊 Show Data Distribution",
+                "icon": "$(graph-scatter)"
+            },
+            {
+                "command": "mlTools.outlierDetection",
+                "title": "🚨 Detect Outliers",
+                "icon": "$(warning)"
+            },
+            {
+                "command": "mlTools.missingValues",
+                "title": "❓ Handle Missing Values",
+                "icon": "$(question)"
+            },
+            {
+                "command": "mlTools.featureScale",
+                "title": "⚖️ Scale Features",
+                "icon": "$(symbol-misc)"
+            },
+            {
+                "command": "mlTools.correlationMatrix",
+                "title": "🔗 Correlation Matrix",
+                "icon": "$(link)"
+            },
+            {
+                "command": "mlTools.pairPlot",
+                "title": "📈 Generate Pair Plot",
+                "icon": "$(graph-scatter)"
+            },
+            {
+                "command": "mlTools.dimensionReduce",
+                "title": "📉 Dimensionality Reduction",
+                "icon": "$(fold-down)"
+            },
+            {
+                "command": "mlTools.timeSeriesDecompose",
+                "title": "⏰ Decompose Time Series",
+                "icon": "$(clock)"
+            },
+            {
+                "command": "mlTools.seasonalityTest",
+                "title": "🌊 Test for Seasonality",
+                "icon": "$(pulse)"
+            },
+            {
+                "command": "mlTools.stationarityTest",
+                "title": "📏 Test Stationarity",
+                "icon": "$(symbol-ruler)"
+            },
+            {
+                "command": "mlTools.trendAnalysis",
+                "title": "📈 Trend Analysis",
+                "icon": "$(trending-up)"
+            },
+            {
+                "command": "mlTools.anomalyDetection",
+                "title": "👁️ Anomaly Detection",
+                "icon": "$(eye)"
+            },
+            {
+                "command": "mlTools.distributionFit",
+                "title": "📐 Fit Distribution",
+                "icon": "$(symbol-misc)"
+            },
+            {
+                "command": "mlTools.hypothesisTest",
+                "title": "🧪 Statistical Tests",
+                "icon": "$(beaker)"
+            },
+            {
+                "command": "mlTools.quickRegression",
+                "title": "📊 Quick Regression",
+                "icon": "$(graph-line)"
+            },
+            {
+                "command": "mlTools.quickClassification",
+                "title": "🎯 Quick Classification",
+                "icon": "$(target)"
+            },
+            {
+                "command": "mlTools.quickClustering",
+                "title": "🔘 Quick Clustering",
+                "icon": "$(circle-outline)"
+            },
+            {
+                "command": "mlTools.quickTimeSeries",
+                "title": "⏰ Quick Time Series",
+                "icon": "$(graph-line)"
+            },
+            {
+                "command": "mlTools.quickNLP",
+                "title": "📝 Quick NLP Pipeline",
+                "icon": "$(book)"
+            },
+            {
+                "command": "mlTools.quickCV",
+                "title": "👁️ Quick Computer Vision",
+                "icon": "$(device-camera)"
+            },
+            {
+                "command": "mlTools.quickRecommender",
+                "title": "⭐ Quick Recommender",
+                "icon": "$(star)"
+            },
+            {
+                "command": "mlTools.autoEDA",
+                "title": "🔍 Auto EDA Report",
+                "icon": "$(search)"
             }
         ],
             "keybindings": [
