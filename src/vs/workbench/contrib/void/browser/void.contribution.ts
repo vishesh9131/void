@@ -1,8 +1,7 @@
-/*--------------------------------------------------------------------------------------
- *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
- *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
- *--------------------------------------------------------------------------------------*/
-
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 
 // register inline diffs
 import './editCodeService.js'
@@ -28,21 +27,75 @@ import './voidSettingsPane.js'
 // register css
 import './media/void.css'
 
-// GPU, tensors, model services - temporarily disabled during stabilization
-// import '../common/tensorVisualizerService.js'
-// import '../common/gpuResourceService.js'
-// import '../common/autoMLService.js' // Not yet implemented
+// update (frontend part, also see platform/)
+import './voidUpdateActions.js'
+
+import './convertToLLMMessageWorkbenchContrib.js'
+
+// tools
+import './toolsService.js'
+import './terminalToolService.js'
+
+// register Thread History
+import './chatThreadService.js'
+
+// ping
+import './metricsPollService.js'
+
+// helper services
+import './helperServices/consistentItemService.js'
+
+// register selection helper
+import './voidSelectionHelperWidget.js'
+
+// register tooltip service
+import './tooltipService.js'
+
+// register onboarding service
+import './voidOnboardingService.js'
+
+// register misc service
+import './miscWokrbenchContrib.js'
+
+// register file service (for explorer context menu)
+import './fileService.js'
+
+// register source control management
+import './voidSCMService.js'
+
+// ---------- common (unclear if these actually need to be imported, because they're already imported wherever they're used) ----------
+
+// llmMessage
+import '../common/sendLLMMessageService.js'
+
+// voidSettings
+import '../common/voidSettingsService.js'
+
+// refreshModel
+import '../common/refreshModelService.js'
+
+// metrics
+import '../common/metricsService.js'
+
+// updates
+import '../common/voidUpdateService.js'
 
 // model service
 import '../common/voidModelService.js'
 
-import './react/VoidOnboarding';
+// register ML actions
+import './mlActions.js'
 
-// Register ML features - placeholder for future implementation
-console.log('🚀 VS Aware ML Features Ready!');
-console.log('✅ Python to Notebook Converter');
-console.log('✅ Neural Network Playground');
-console.log('✅ Dataset Visualizer');
-console.log('✅ Quick Model Builder');
-console.log('✅ Tensor Shape Analyzer');
-console.log('✅ ML Development Tools');
+// register ML sidebar panel
+import './mlToolsSidebar.js'
+
+// register Aware Tools menu bar
+import './mlMenuBar.js'
+
+console.log('VS Aware ML Features Ready!');
+console.log('Python to Notebook Converter');
+console.log('Neural Network Playground');
+console.log('Dataset Visualizer');
+console.log('Quick Model Builder');
+console.log('Tensor Shape Analyzer');
+console.log('ML Development Tools');

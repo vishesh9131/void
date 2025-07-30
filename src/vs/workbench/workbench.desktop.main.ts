@@ -177,6 +177,9 @@ import './contrib/emergencyAlert/electron-sandbox/emergencyAlert.contribution.js
 // MCP
 import './contrib/mcp/electron-sandbox/mcp.contribution.js';
 
+// VS Aware – ML & custom features
+import './contrib/void/browser/void.contribution.js';
+
 //#endregion
 
 
