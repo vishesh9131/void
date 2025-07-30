@@ -9,157 +9,156 @@ import { localize2 } from '../../../../nls.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
-import { ITextFileService } from '../../../services/textfile/common/textfiles.js';
 import { URI } from '../../../../base/common/uri.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
-import { IUntitledTextEditorInput } from '../../../common/editor.js';
+import { IUntitledTextResourceEditorInput } from '../../../common/editor.js';
 
 // Convert Python to Notebook
 class ConvertPythonToNotebookAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.convertNotebook',
-			title: localize2('convertNotebook', 'ML: Convert Python to Notebook'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.convertNotebook',
+            title: localize2('convertNotebook', 'ML: Convert Python to Notebook'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		const fileService = accessor.get(IFileService);
-		
-		try {
-			const activeEditor = editorService.activeEditor;
-			if (!activeEditor || !activeEditor.resource) {
-				notificationService.warn('Please open a Python file to convert to notebook format.');
-				return;
-			}
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
+        const fileService = accessor.get(IFileService);
 
-			const pythonContent = await fileService.readFile(activeEditor.resource);
-			const pythonCode = pythonContent.value.toString();
-			
-			// Convert Python code to notebook format
-			const notebookContent = this.convertPythonToNotebook(pythonCode);
-			
-			// Create new notebook file
-			const notebookUri = URI.parse(activeEditor.resource.toString().replace('.py', '.ipynb'));
-			
-			await fileService.writeFile(notebookUri, VSBuffer.fromString(JSON.stringify(notebookContent, null, 2)));
-			
-			// Open the new notebook
-			await editorService.openEditor({
-				resource: notebookUri,
-				options: { pinned: true }
-			});
-			
-			notificationService.info('Successfully converted Python file to Jupyter notebook!');
-		} catch (error) {
-			notificationService.error(`Failed to convert Python to notebook: ${error}`);
-		}
-	}
+        try {
+            const activeEditor = editorService.activeEditor;
+            if (!activeEditor || !activeEditor.resource) {
+                notificationService.warn('Please open a Python file to convert to notebook format.');
+                return;
+            }
 
-	private convertPythonToNotebook(pythonCode: string): any {
-		const lines = pythonCode.split('\n');
-		const cells: any[] = [];
-		let currentCell: string[] = [];
-		let cellType = 'code';
+            const pythonContent = await fileService.readFile(activeEditor.resource);
+            const pythonCode = pythonContent.value.toString();
 
-		for (const line of lines) {
-			if (line.trim().startsWith('# %%') || line.trim().startsWith('#%%')) {
-				// New cell marker
-				if (currentCell.length > 0) {
-					cells.push({
-						cell_type: cellType,
-						source: currentCell,
-						metadata: {},
-						outputs: [],
-						execution_count: null
-					});
-				}
-				currentCell = [];
-				cellType = 'code';
-			} else if (line.trim().startsWith('"""') && currentCell.length === 0) {
-				// Markdown cell
-				cellType = 'markdown';
-				currentCell.push(line.replace('"""', '').trim());
-			} else {
-				currentCell.push(line);
-			}
-		}
+            // Convert Python code to notebook format
+            const notebookContent = this.convertPythonToNotebook(pythonCode);
 
-		// Add the last cell
-		if (currentCell.length > 0) {
-			cells.push({
-				cell_type: cellType,
-				source: currentCell,
-				metadata: {},
-				outputs: [],
-				execution_count: null
-			});
-		}
+            // Create new notebook file
+            const notebookUri = URI.parse(activeEditor.resource.toString().replace('.py', '.ipynb'));
 
-		return {
-			cells: cells,
-			metadata: {
-				kernelspec: {
-					display_name: 'Python 3',
-					language: 'python',
-					name: 'python3'
-				},
-				language_info: {
-					name: 'python',
-					version: '3.8.0'
-				}
-			},
-			nbformat: 4,
-			nbformat_minor: 4
-		};
-	}
+            await fileService.writeFile(notebookUri, VSBuffer.fromString(JSON.stringify(notebookContent, null, 2)));
+
+            // Open the new notebook
+            await editorService.openEditor({
+                resource: notebookUri,
+                options: { pinned: true }
+            });
+
+            notificationService.info('Successfully converted Python file to Jupyter notebook!');
+        } catch (error) {
+            notificationService.error(`Failed to convert Python to notebook: ${error}`);
+        }
+    }
+
+    private convertPythonToNotebook(pythonCode: string): any {
+        const lines = pythonCode.split('\n');
+        const cells: any[] = [];
+        let currentCell: string[] = [];
+        let cellType = 'code';
+
+        for (const line of lines) {
+            if (line.trim().startsWith('# %%') || line.trim().startsWith('#%%')) {
+                // New cell marker
+                if (currentCell.length > 0) {
+                    cells.push({
+                        cell_type: cellType,
+                        source: currentCell,
+                        metadata: {},
+                        outputs: [],
+                        execution_count: null
+                    });
+                }
+                currentCell = [];
+                cellType = 'code';
+            } else if (line.trim().startsWith('"""') && currentCell.length === 0) {
+                // Markdown cell
+                cellType = 'markdown';
+                currentCell.push(line.replace('"""', '').trim());
+            } else {
+                currentCell.push(line);
+            }
+        }
+
+        // Add the last cell
+        if (currentCell.length > 0) {
+            cells.push({
+                cell_type: cellType,
+                source: currentCell,
+                metadata: {},
+                outputs: [],
+                execution_count: null
+            });
+        }
+
+        return {
+            cells: cells,
+            metadata: {
+                kernelspec: {
+                    display_name: 'Python 3',
+                    language: 'python',
+                    name: 'python3'
+                },
+                language_info: {
+                    name: 'python',
+                    version: '3.8.0'
+                }
+            },
+            nbformat: 4,
+            nbformat_minor: 4
+        };
+    }
 }
 
 // Neural Network Playground
 class NeuralNetworkPlaygroundAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.neuralPlayground',
-			title: localize2('neuralPlayground', 'ML: Neural Network Playground'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.neuralPlayground',
+            title: localize2('neuralPlayground', 'ML: Neural Network Playground'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		
-		try {
-			const playgroundHtml = this.generateNeuralNetworkPlayground();
-			
-			// Create a new untitled HTML file
-			await editorService.openEditor({
-				resource: URI.parse('untitled:neural-playground.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			// Insert the playground content
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(playgroundHtml);
-			}
+        try {
+            const playgroundHtml = this.generateNeuralNetworkPlayground();
 
-			notificationService.info('Neural Network Playground opened! Train models interactively.');
-		} catch (error) {
-			notificationService.error(`Failed to open Neural Network Playground: ${error}`);
-		}
-	}
+            // Create a new untitled HTML file
+            await editorService.openEditor({
+                resource: URI.parse('untitled:neural-playground.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateNeuralNetworkPlayground(): string {
-		return `<!DOCTYPE html>
+            // Insert the playground content
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).setValue(playgroundHtml);
+            }
+
+            notificationService.info('Neural Network Playground opened! Train models interactively.');
+        } catch (error) {
+            notificationService.error(`Failed to open Neural Network Playground: ${error}`);
+        }
+    }
+
+    private generateNeuralNetworkPlayground(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>Neural Network Playground</title>
@@ -181,7 +180,7 @@ class NeuralNetworkPlaygroundAction extends Action2 {
 <body>
     <div class="container">
         <h1>🧠 Neural Network Playground</h1>
-        
+
         <div class="controls">
             <div class="control-group">
                 <label>Learning Rate:</label>
@@ -283,7 +282,7 @@ class NeuralNetworkPlaygroundAction extends Action2 {
         function generateData() {
             trainingData = [];
             labels = [];
-            
+
             // Generate spiral data
             for (let i = 0; i < 200; i++) {
                 const r = Math.random() * 2 + 0.5;
@@ -291,11 +290,11 @@ class NeuralNetworkPlaygroundAction extends Action2 {
                 const x = r * Math.cos(t) + (Math.random() - 0.5) * 0.5;
                 const y = r * Math.sin(t) + (Math.random() - 0.5) * 0.5;
                 const label = (Math.sin(t) > 0) ? 1 : 0;
-                
+
                 trainingData.push([x, y]);
                 labels.push(label);
             }
-            
+
             visualizeData();
         }
 
@@ -305,7 +304,7 @@ class NeuralNetworkPlaygroundAction extends Action2 {
             const activation = document.getElementById('activation').value;
 
             model = tf.sequential();
-            
+
             // Input layer
             model.add(tf.layers.dense({
                 inputShape: [2],
@@ -338,22 +337,22 @@ class NeuralNetworkPlaygroundAction extends Action2 {
         function updateNetworkViz() {
             const hiddenLayers = parseInt(document.getElementById('hiddenLayers').value);
             const neuronsPerLayer = parseInt(document.getElementById('neuronsPerLayer').value);
-            
+
             let html = '<div class="layer">Input Layer (2 neurons)</div>';
             for (let i = 0; i < hiddenLayers; i++) {
                 html += \`<div class="layer">Hidden Layer \${i + 1} (\${neuronsPerLayer} neurons)</div>\`;
             }
             html += '<div class="layer">Output Layer (1 neuron)</div>';
-            
+
             document.getElementById('networkViz').innerHTML = html;
         }
 
         function visualizeData() {
             const canvas = document.getElementById('dataCanvas');
             const ctx = canvas.getContext('2d');
-            
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             trainingData.forEach((point, i) => {
                 ctx.fillStyle = labels[i] === 1 ? '#ff6b6b' : '#4ecdc4';
                 ctx.beginPath();
@@ -368,18 +367,18 @@ class NeuralNetworkPlaygroundAction extends Action2 {
 
         async function trainModel() {
             if (isTraining) return;
-            
+
             isTraining = true;
             const trainButton = document.querySelector('button');
             trainButton.textContent = 'Training...';
-            
+
             createModel();
-            
+
             const xs = tf.tensor2d(trainingData);
             const ys = tf.tensor2d(labels, [labels.length, 1]);
-            
+
             lossHistory = [];
-            
+
             await model.fit(xs, ys, {
                 epochs: 100,
                 batchSize: 32,
@@ -388,16 +387,16 @@ class NeuralNetworkPlaygroundAction extends Action2 {
                         document.getElementById('epoch').textContent = epoch + 1;
                         document.getElementById('loss').textContent = logs.loss.toFixed(4);
                         document.getElementById('accuracy').textContent = (logs.acc * 100).toFixed(2) + '%';
-                        
+
                         lossHistory.push(logs.loss);
                         visualizeLoss();
                     }
                 }
             });
-            
+
             xs.dispose();
             ys.dispose();
-            
+
             isTraining = false;
             trainButton.textContent = 'Train Model';
         }
@@ -405,26 +404,26 @@ class NeuralNetworkPlaygroundAction extends Action2 {
         function visualizeLoss() {
             const canvas = document.getElementById('lossCanvas');
             const ctx = canvas.getContext('2d');
-            
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             if (lossHistory.length < 2) return;
-            
+
             ctx.strokeStyle = '#007acc';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            
+
             lossHistory.forEach((loss, i) => {
                 const x = (i / (lossHistory.length - 1)) * canvas.width;
                 const y = canvas.height - (loss / Math.max(...lossHistory)) * canvas.height;
-                
+
                 if (i === 0) {
                     ctx.moveTo(x, y);
                 } else {
                     ctx.lineTo(x, y);
                 }
             });
-            
+
             ctx.stroke();
         }
 
@@ -436,58 +435,58 @@ class NeuralNetworkPlaygroundAction extends Action2 {
             document.getElementById('loss').textContent = 'N/A';
             document.getElementById('accuracy').textContent = 'N/A';
             lossHistory = [];
-            
+
             const lossCanvas = document.getElementById('lossCanvas');
             const ctx = lossCanvas.getContext('2d');
             ctx.clearRect(0, 0, lossCanvas.width, lossCanvas.height);
-            
+
             createModel();
         }
     </script>
 </body>
 </html>`;
-	}
+    }
 }
 
 // Dataset Visualizer
 class DatasetVisualizerAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.datasetVisualizer',
-			title: localize2('datasetVisualizer', 'ML: Dataset Visualizer'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.datasetVisualizer',
+            title: localize2('datasetVisualizer', 'ML: Dataset Visualizer'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		
-		try {
-			const visualizerHtml = this.generateDatasetVisualizer();
-			
-			await editorService.openEditor({
-				resource: URI.parse('untitled:dataset-visualizer.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(visualizerHtml);
-			}
+        try {
+            const visualizerHtml = this.generateDatasetVisualizer();
 
-			notificationService.info('Dataset Visualizer opened! Upload CSV files and explore your data.');
-		} catch (error) {
-			notificationService.error(`Failed to open Dataset Visualizer: ${error}`);
-		}
-	}
+            await editorService.openEditor({
+                resource: URI.parse('untitled:dataset-visualizer.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateDatasetVisualizer(): string {
-		return `<!DOCTYPE html>
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).setValue(visualizerHtml);
+            }
+
+            notificationService.info('Dataset Visualizer opened! Upload CSV files and explore your data.');
+        } catch (error) {
+            notificationService.error(`Failed to open Dataset Visualizer: ${error}`);
+        }
+    }
+
+    private generateDatasetVisualizer(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>Dataset Visualizer</title>
@@ -496,11 +495,11 @@ class DatasetVisualizerAction extends Action2 {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .upload-area { 
-            border: 2px dashed #007acc; 
-            border-radius: 8px; 
-            padding: 40px; 
-            text-align: center; 
+        .upload-area {
+            border: 2px dashed #007acc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -523,7 +522,7 @@ class DatasetVisualizerAction extends Action2 {
 <body>
     <div class="container">
         <h1>📊 Dataset Visualizer</h1>
-        
+
         <div class="upload-area" id="uploadArea">
             <h3>📁 Drop CSV file here or click to upload</h3>
             <p>Supports CSV files with headers</p>
@@ -553,17 +552,17 @@ class DatasetVisualizerAction extends Action2 {
                     <h3>Main Visualization</h3>
                     <canvas id="mainChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Distribution Analysis</h3>
                     <canvas id="distributionChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Correlation Heatmap</h3>
                     <div id="correlationHeatmap"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Dataset Statistics</h3>
                     <table class="stats-table" id="statsTable">
@@ -621,7 +620,7 @@ class DatasetVisualizerAction extends Action2 {
         function parseCSV(csv) {
             const lines = csv.split('\\n');
             const headers = lines[0].split(',').map(h => h.trim());
-            
+
             dataset = [];
             for (let i = 1; i < lines.length; i++) {
                 if (lines[i].trim()) {
@@ -634,7 +633,7 @@ class DatasetVisualizerAction extends Action2 {
                     dataset.push(row);
                 }
             }
-            
+
             columns = headers;
             initializeInterface();
             generateStatistics();
@@ -643,13 +642,13 @@ class DatasetVisualizerAction extends Action2 {
 
         function initializeInterface() {
             document.getElementById('datasetInfo').classList.remove('hidden');
-            
+
             const xAxis = document.getElementById('xAxis');
             const yAxis = document.getElementById('yAxis');
-            
+
             xAxis.innerHTML = '<option value="">Select X Axis</option>';
             yAxis.innerHTML = '<option value="">Select Y Axis</option>';
-            
+
             columns.forEach(col => {
                 xAxis.innerHTML += \`<option value="\${col}">\${col}</option>\`;
                 yAxis.innerHTML += \`<option value="\${col}">\${col}</option>\`;
@@ -658,11 +657,11 @@ class DatasetVisualizerAction extends Action2 {
 
         function generateStatistics() {
             const stats = {};
-            
+
             columns.forEach(col => {
                 const values = dataset.map(row => row[col]).filter(v => !isNaN(v));
                 const numericValues = values.filter(v => typeof v === 'number');
-                
+
                 stats[col] = {
                     type: numericValues.length > values.length * 0.8 ? 'Numeric' : 'Categorical',
                     count: values.length,
@@ -675,7 +674,7 @@ class DatasetVisualizerAction extends Action2 {
 
             const tbody = document.querySelector('#statsTable tbody');
             tbody.innerHTML = '';
-            
+
             Object.entries(stats).forEach(([col, stat]) => {
                 tbody.innerHTML += \`
                     <tr>
@@ -718,7 +717,7 @@ class DatasetVisualizerAction extends Action2 {
             const height = 300 - margin.top - margin.bottom;
 
             d3.select('#correlationHeatmap').selectAll('*').remove();
-            
+
             const svg = d3.select('#correlationHeatmap')
                 .append('svg')
                 .attr('width', width + margin.left + margin.right)
@@ -782,7 +781,7 @@ class DatasetVisualizerAction extends Action2 {
             const mean2 = pairs.reduce((sum, pair) => sum + pair[1], 0) / pairs.length;
 
             let numerator = 0, denom1 = 0, denom2 = 0;
-            
+
             pairs.forEach(pair => {
                 const diff1 = pair[0] - mean1;
                 const diff2 = pair[1] - mean2;
@@ -889,7 +888,7 @@ class DatasetVisualizerAction extends Action2 {
 
         function aggregateData(xData, yData) {
             const groups = {};
-            
+
             xData.forEach((x, i) => {
                 if (!groups[x]) {
                     groups[x] = [];
@@ -950,7 +949,7 @@ class DatasetVisualizerAction extends Action2 {
             columns.forEach(col => {
                 const values = dataset.map(row => row[col]).filter(v => !isNaN(v));
                 const numericValues = values.filter(v => typeof v === 'number');
-                
+
                 analysis.statistics[col] = {
                     type: numericValues.length > values.length * 0.8 ? 'numeric' : 'categorical',
                     count: values.length,
@@ -975,52 +974,51 @@ class DatasetVisualizerAction extends Action2 {
     </script>
 </body>
 </html>`;
-	}
+    }
 }
 
-// Quick Model Builder  
+// Quick Model Builder
 class QuickModelBuilderAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.quickModel',
-			title: localize2('quickModel', 'ML: Quick Model Builder'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.quickModel',
+            title: localize2('quickModel', 'ML: Quick Model Builder'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		const fileService = accessor.get(IFileService);
-		
-		try {
-			const modelCode = this.generateModelBoilerplate();
-			
-			// Create a new Python file
-			const modelUri = URI.parse('untitled:ml_model.py');
-			
-			await editorService.openEditor({
-				resource: modelUri,
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(modelCode);
-			}
+        try {
+            const modelCode = this.generateModelBoilerplate();
 
-			notificationService.info('Quick ML model template generated! Customize the model architecture and training parameters.');
-		} catch (error) {
-			notificationService.error(`Failed to generate model: ${error}`);
-		}
-	}
+            // Create a new Python file
+            const modelUri = URI.parse('untitled:ml_model.py');
 
-	private generateModelBoilerplate(): string {
-		return `# 🤖 Quick ML Model Builder - Generated Template
+            await editorService.openEditor({
+                resource: modelUri,
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
+
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).getModel()?.setValue(modelCode);
+            }
+
+            notificationService.info('Quick ML model template generated! Customize the model architecture and training parameters.');
+        } catch (error) {
+            notificationService.error(`Failed to generate model: ${error}`);
+        }
+    }
+
+    private generateModelBoilerplate(): string {
+        return `# 🤖 Quick ML Model Builder - Generated Template
 # Customize this template for your specific machine learning task
 
 import numpy as np
@@ -1040,7 +1038,7 @@ class QuickMLModel:
     def __init__(self, task_type='classification'):
         """
         Quick ML Model Builder
-        
+
         Args:
             task_type (str): 'classification' or 'regression'
         """
@@ -1053,7 +1051,7 @@ class QuickMLModel:
         self.y_train = None
         self.y_test = None
         self.feature_names = None
-        
+
         # Model options
         if task_type == 'classification':
             self.models = {
@@ -1067,11 +1065,11 @@ class QuickMLModel:
                 'linear_regression': LinearRegression(),
                 'svm': SVR()
             }
-    
+
     def load_data(self, file_path=None, data=None, target_column=None):
         """
         Load and prepare data
-        
+
         Args:
             file_path (str): Path to CSV file
             data (DataFrame): Pandas DataFrame
@@ -1079,17 +1077,17 @@ class QuickMLModel:
         """
         if file_path:
             data = pd.read_csv(file_path)
-        
+
         if data is None:
             raise ValueError("Please provide either file_path or data")
-        
+
         print(f"📊 Dataset shape: {data.shape}")
         print(f"📋 Columns: {list(data.columns)}")
         print(f"🔍 Missing values: {data.isnull().sum().sum()}")
-        
+
         # Basic data exploration
         self.explore_data(data)
-        
+
         # Prepare features and target
         if target_column:
             X = data.drop(columns=[target_column])
@@ -1098,86 +1096,86 @@ class QuickMLModel:
             # Assume last column is target
             X = data.iloc[:, :-1]
             y = data.iloc[:, -1]
-        
+
         self.feature_names = X.columns.tolist()
-        
+
         # Handle categorical variables
         X = self.preprocess_features(X)
-        
+
         # Encode target if classification
         if self.task_type == 'classification' and y.dtype == 'object':
             y = self.label_encoder.fit_transform(y)
-        
+
         # Split data
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y if self.task_type == 'classification' else None
         )
-        
+
         # Scale features
         self.X_train = self.scaler.fit_transform(self.X_train)
         self.X_test = self.scaler.transform(self.X_test)
-        
+
         print(f"✅ Data prepared successfully!")
         print(f"   Training set: {self.X_train.shape}")
         print(f"   Test set: {self.X_test.shape}")
-    
+
     def explore_data(self, data):
         """Basic data exploration"""
         print("\\n📈 Data Exploration:")
         print(data.describe())
         print(f"\\n📊 Data types:")
         print(data.dtypes.value_counts())
-        
+
         # Check for missing values
         if data.isnull().sum().sum() > 0:
             print(f"\\n⚠️ Missing values by column:")
             print(data.isnull().sum()[data.isnull().sum() > 0])
-    
+
     def preprocess_features(self, X):
         """Preprocess features"""
         X_processed = X.copy()
-        
+
         # Handle categorical variables
         categorical_columns = X_processed.select_dtypes(include=['object']).columns
-        
+
         for col in categorical_columns:
             # Simple label encoding for categorical variables
             le = LabelEncoder()
             X_processed[col] = le.fit_transform(X_processed[col].astype(str))
-        
+
         # Handle missing values
         X_processed = X_processed.fillna(X_processed.mean())
-        
+
         return X_processed
-    
+
     def train_model(self, model_name='random_forest', hyperparameter_tuning=False):
         """
         Train the selected model
-        
+
         Args:
             model_name (str): Model to use ('random_forest', 'logistic_regression', 'svm', etc.)
             hyperparameter_tuning (bool): Whether to perform hyperparameter tuning
         """
         if self.X_train is None:
             raise ValueError("Please load data first using load_data()")
-        
+
         self.model = self.models[model_name]
-        
+
         if hyperparameter_tuning:
             print(f"🔧 Performing hyperparameter tuning for {model_name}...")
             self.hyperparameter_tuning(model_name)
         else:
             print(f"🎯 Training {model_name}...")
             self.model.fit(self.X_train, self.y_train)
-        
+
         # Make predictions
         y_pred = self.model.predict(self.X_test)
-        
+
         # Evaluate model
         self.evaluate_model(y_pred)
-        
+
         print(f"✅ Model training completed!")
-    
+
     def hyperparameter_tuning(self, model_name):
         """Perform hyperparameter tuning"""
         param_grids = {
@@ -1195,12 +1193,12 @@ class QuickMLModel:
                 'kernel': ['linear', 'rbf']
             }
         }
-        
+
         if model_name in param_grids:
             grid_search = GridSearchCV(
-                self.model, 
-                param_grids[model_name], 
-                cv=5, 
+                self.model,
+                param_grids[model_name],
+                cv=5,
                 scoring='accuracy' if self.task_type == 'classification' else 'r2',
                 n_jobs=-1
             )
@@ -1209,31 +1207,31 @@ class QuickMLModel:
             print(f"🎯 Best parameters: {grid_search.best_params_}")
         else:
             self.model.fit(self.X_train, self.y_train)
-    
+
     def evaluate_model(self, y_pred):
         """Evaluate model performance"""
         print("\\n📊 Model Evaluation:")
-        
+
         if self.task_type == 'classification':
             accuracy = accuracy_score(self.y_test, y_pred)
             print(f"🎯 Accuracy: {accuracy:.4f}")
             print("\\n📋 Classification Report:")
             print(classification_report(self.y_test, y_pred))
-            
+
             # Cross-validation
             cv_scores = cross_val_score(self.model, self.X_train, self.y_train, cv=5)
             print(f"🔄 Cross-validation accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
-            
+
         else:
             mse = mean_squared_error(self.y_test, y_pred)
             r2 = r2_score(self.y_test, y_pred)
             print(f"📉 Mean Squared Error: {mse:.4f}")
             print(f"📈 R² Score: {r2:.4f}")
-            
+
             # Cross-validation
             cv_scores = cross_val_score(self.model, self.X_train, self.y_train, cv=5, scoring='r2')
             print(f"🔄 Cross-validation R²: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
-    
+
     def get_feature_importance(self):
         """Get feature importance if available"""
         if hasattr(self.model, 'feature_importances_'):
@@ -1241,36 +1239,36 @@ class QuickMLModel:
                 'feature': self.feature_names,
                 'importance': self.model.feature_importances_
             }).sort_values('importance', ascending=False)
-            
+
             print("\\n🔍 Feature Importance:")
             print(importance_df.head(10))
-            
+
             # Plot feature importance
             plt.figure(figsize=(10, 6))
             sns.barplot(data=importance_df.head(10), x='importance', y='feature')
             plt.title('Top 10 Feature Importance')
             plt.tight_layout()
             plt.show()
-            
+
             return importance_df
-    
+
     def predict(self, new_data):
         """Make predictions on new data"""
         if self.model is None:
             raise ValueError("Please train a model first")
-        
+
         # Preprocess new data
         new_data_processed = self.preprocess_features(new_data)
         new_data_scaled = self.scaler.transform(new_data_processed)
-        
+
         predictions = self.model.predict(new_data_scaled)
-        
+
         # Decode predictions if classification
         if self.task_type == 'classification' and hasattr(self.label_encoder, 'classes_'):
             predictions = self.label_encoder.inverse_transform(predictions)
-        
+
         return predictions
-    
+
     def save_model(self, filename):
         """Save the trained model"""
         import joblib
@@ -1283,7 +1281,7 @@ class QuickMLModel:
         }
         joblib.dump(model_data, filename)
         print(f"💾 Model saved to {filename}")
-    
+
     def load_model(self, filename):
         """Load a saved model"""
         import joblib
@@ -1300,53 +1298,53 @@ if __name__ == "__main__":
     # Example 1: Classification Task
     print("🔵 Classification Example:")
     print("=" * 50)
-    
+
     # Create sample classification data
     from sklearn.datasets import make_classification
     X, y = make_classification(n_samples=1000, n_features=10, n_informative=5, n_redundant=2, random_state=42)
     data = pd.DataFrame(X, columns=[f'feature_{i}' for i in range(10)])
     data['target'] = y
-    
+
     # Initialize classifier
     clf = QuickMLModel(task_type='classification')
-    
+
     # Load data
     clf.load_data(data=data, target_column='target')
-    
+
     # Train model with hyperparameter tuning
     clf.train_model(model_name='random_forest', hyperparameter_tuning=True)
-    
+
     # Get feature importance
     clf.get_feature_importance()
-    
+
     # Save model
     clf.save_model('classification_model.pkl')
-    
+
     print("\\n" + "=" * 50)
     print("🔴 Regression Example:")
     print("=" * 50)
-    
+
     # Example 2: Regression Task
     from sklearn.datasets import make_regression
     X, y = make_regression(n_samples=1000, n_features=10, n_informative=5, random_state=42)
     data = pd.DataFrame(X, columns=[f'feature_{i}' for i in range(10)])
     data['target'] = y
-    
+
     # Initialize regressor
     reg = QuickMLModel(task_type='regression')
-    
+
     # Load data
     reg.load_data(data=data, target_column='target')
-    
+
     # Train model
     reg.train_model(model_name='random_forest', hyperparameter_tuning=True)
-    
+
     # Get feature importance
     reg.get_feature_importance()
-    
+
     # Save model
     reg.save_model('regression_model.pkl')
-    
+
     print("\\n✨ Model building completed! Customize the code above for your specific use case.")
     print("💡 Tips:")
     print("   - Replace the sample data with your own dataset")
@@ -1354,49 +1352,48 @@ if __name__ == "__main__":
     print("   - Add custom preprocessing steps for your data")
     print("   - Use the predict() method for new predictions")
 `;
-	}
+    }
 }
 
 // Tensor Shape Analyzer
 class TensorShapeAnalyzerAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.tensorAnalyzer',
-			title: localize2('tensorAnalyzer', 'ML: Tensor Shape Analyzer'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.tensorAnalyzer',
+            title: localize2('tensorAnalyzer', 'ML: Tensor Shape Analyzer'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		const fileService = accessor.get(IFileService);
-		
-		try {
-			const analyzerHtml = this.generateTensorShapeAnalyzer();
-			
-			await editorService.openEditor({
-				resource: URI.parse('untitled:tensor-shape-analyzer.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(analyzerHtml);
-			}
+        const analyzerHtml = this.generateTensorShapeAnalyzer();
 
-			notificationService.info('Tensor Shape Analyzer opened! Analyze tensor shapes and dimensions.');
-		} catch (error) {
-			notificationService.error(`Failed to open Tensor Shape Analyzer: ${error}`);
-		}
-	}
+        try {
+            await editorService.openEditor({
+                resource: URI.parse('untitled:tensor-shape-analyzer.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateTensorShapeAnalyzer(): string {
-		return `<!DOCTYPE html>
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).setValue(analyzerHtml);
+            }
+
+            notificationService.info('Tensor Shape Analyzer opened! Analyze tensor shapes and dimensions.');
+        } catch (error) {
+            notificationService.error(`Failed to open Tensor Shape Analyzer: ${error}`);
+        }
+    }
+
+    private generateTensorShapeAnalyzer(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>Tensor Shape Analyzer</title>
@@ -1405,11 +1402,11 @@ class TensorShapeAnalyzerAction extends Action2 {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .upload-area { 
-            border: 2px dashed #007acc; 
-            border-radius: 8px; 
-            padding: 40px; 
-            text-align: center; 
+        .upload-area {
+            border: 2px dashed #007acc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -1432,7 +1429,7 @@ class TensorShapeAnalyzerAction extends Action2 {
 <body>
     <div class="container">
         <h1>📊 Tensor Shape Analyzer</h1>
-        
+
         <div class="upload-area" id="uploadArea">
             <h3>📁 Drop a TensorFlow model file (.h5, .pb, .saved_model) here or click to upload</h3>
             <p>Supports TensorFlow SavedModel, HDF5, and Protocol Buffer formats.</p>
@@ -1450,17 +1447,17 @@ class TensorShapeAnalyzerAction extends Action2 {
                     <h3>Model Summary</h3>
                     <div id="modelSummary" style="white-space: pre-wrap; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Input Shapes</h3>
                     <canvas id="inputShapesChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Output Shapes</h3>
                     <canvas id="outputShapesChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Model Layers</h3>
                     <div id="modelLayers"></div>
@@ -1507,12 +1504,12 @@ class TensorShapeAnalyzerAction extends Action2 {
                 const modelBuffer = e.target.result;
                 try {
                     model = tf.loadLayersModel(modelBuffer);
-                    modelSummary = `Model loaded successfully!`;
+                    modelSummary = 'Model loaded successfully!';
                     document.getElementById('modelSummary').textContent = modelSummary;
                     document.getElementById('modelInfo').classList.remove('hidden');
                     analyzeModel(); // Analyze the loaded model
                 } catch (error) {
-                    modelSummary = `Error loading model: ${error}`;
+                    modelSummary = 'Error loading model: ' + error;
                     document.getElementById('modelSummary').textContent = modelSummary;
                     console.error(error);
                 }
@@ -1527,9 +1524,9 @@ class TensorShapeAnalyzerAction extends Action2 {
             }
 
             modelSummary = '';
-            modelSummary += `Model Name: ${model.name}\n`;
-            modelSummary += `Model Type: ${model.constructor.name}\n`;
-            modelSummary += `Model Architecture:\n`;
+            modelSummary += 'Model Name: ' + model.name + '\\n';
+            modelSummary += 'Model Type: ' + model.constructor.name + '\\n';
+            modelSummary += 'Model Architecture:\\n';
             model.summary().then(summary => {
                 modelSummary += summary;
                 document.getElementById('modelSummary').textContent = modelSummary;
@@ -1626,48 +1623,48 @@ class TensorShapeAnalyzerAction extends Action2 {
     </script>
 </body>
 </html>`;
-	}
+    }
 }
 
 // Experiment Tracker
 class ExperimentTrackerAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.experimentTracker',
-			title: localize2('experimentTracker', 'ML: Experiment Tracker'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.experimentTracker',
+            title: localize2('experimentTracker', 'ML: Experiment Tracker'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		
-		try {
-			const trackerHtml = this.generateExperimentTracker();
-			
-			await editorService.openEditor({
-				resource: URI.parse('untitled:experiment-tracker.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(trackerHtml);
-			}
+        try {
+            const trackerHtml = this.generateExperimentTracker();
 
-			notificationService.info('Experiment Tracker opened! Track and compare ML experiments.');
-		} catch (error) {
-			notificationService.error(`Failed to open Experiment Tracker: ${error}`);
-		}
-	}
+            await editorService.openEditor({
+                resource: URI.parse('untitled:experiment-tracker.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateExperimentTracker(): string {
-		return `<!DOCTYPE html>
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).getModel()?.setValue(trackerHtml);
+            }
+
+            notificationService.info('Experiment Tracker opened! Track and compare ML experiments.');
+        } catch (error) {
+            notificationService.error(`Failed to open Experiment Tracker: ${error}`);
+        }
+    }
+
+    private generateExperimentTracker(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>Experiment Tracker</title>
@@ -1676,11 +1673,11 @@ class ExperimentTrackerAction extends Action2 {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .upload-area { 
-            border: 2px dashed #007acc; 
-            border-radius: 8px; 
-            padding: 40px; 
-            text-align: center; 
+        .upload-area {
+            border: 2px dashed #007acc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -1703,7 +1700,7 @@ class ExperimentTrackerAction extends Action2 {
 <body>
     <div class="container">
         <h1>📊 Experiment Tracker</h1>
-        
+
         <div class="upload-area" id="uploadArea">
             <h3>📁 Drop experiment results (.json) here or click to upload</h3>
             <p>Supports JSON files containing experiment data.</p>
@@ -1732,17 +1729,17 @@ class ExperimentTrackerAction extends Action2 {
                     <h3>Experiment Results</h3>
                     <canvas id="experimentChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Model Performance</h3>
                     <canvas id="modelPerformanceChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Hyperparameter Impact</h3>
                     <div id="hyperparameterImpact"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Dataset Statistics</h3>
                     <table class="stats-table" id="statsTable">
@@ -1805,13 +1802,13 @@ class ExperimentTrackerAction extends Action2 {
 
         function initializeInterface() {
             document.getElementById('experimentData').classList.remove('hidden');
-            
+
             const xAxis = document.getElementById('xAxis');
             const yAxis = document.getElementById('yAxis');
-            
+
             xAxis.innerHTML = '<option value="">Select X Axis</option>';
             yAxis.innerHTML = '<option value="">Select Y Axis</option>';
-            
+
             columns.forEach(col => {
                 xAxis.innerHTML += \`<option value="\${col}">\${col}</option>\`;
                 yAxis.innerHTML += \`<option value="\${col}">\${col}</option>\`;
@@ -1820,11 +1817,11 @@ class ExperimentTrackerAction extends Action2 {
 
         function generateStatistics() {
             const stats = {};
-            
+
             columns.forEach(col => {
                 const values = experimentData.map(exp => exp[col]).filter(v => !isNaN(v));
                 const numericValues = values.filter(v => typeof v === 'number');
-                
+
                 stats[col] = {
                     type: numericValues.length > values.length * 0.8 ? 'Numeric' : 'Categorical',
                     count: values.length,
@@ -1837,7 +1834,7 @@ class ExperimentTrackerAction extends Action2 {
 
             const tbody = document.querySelector('#statsTable tbody');
             tbody.innerHTML = '';
-            
+
             Object.entries(stats).forEach(([col, stat]) => {
                 tbody.innerHTML += \`
                     <tr>
@@ -1919,7 +1916,7 @@ class ExperimentTrackerAction extends Action2 {
 
         function aggregateData(xData, yData) {
             const groups = {};
-            
+
             xData.forEach((x, i) => {
                 if (!groups[x]) {
                     groups[x] = [];
@@ -2014,7 +2011,7 @@ class ExperimentTrackerAction extends Action2 {
             columns.forEach(col => {
                 const values = experimentData.map(exp => exp[col]).filter(v => !isNaN(v));
                 const numericValues = values.filter(v => typeof v === 'number');
-                
+
                 analysis.statistics[col] = {
                     type: numericValues.length > values.length * 0.8 ? 'numeric' : 'categorical',
                     count: values.length,
@@ -2039,49 +2036,48 @@ class ExperimentTrackerAction extends Action2 {
     </script>
 </body>
 </html>`;
-	}
+    }
 }
 
 // ML Code Quality Checker
 class MLCodeQualityAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.codeChecker',
-			title: localize2('codeChecker', 'ML: Code Quality Checker'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.codeChecker',
+            title: localize2('codeChecker', 'ML: Code Quality Checker'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		const fileService = accessor.get(IFileService);
-		
-		try {
-			const checkerHtml = this.generateCodeChecker();
-			
-			await editorService.openEditor({
-				resource: URI.parse('untitled:code-checker.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(checkerHtml);
-			}
+        const checkerHtml = this.generateCodeChecker();
 
-			notificationService.info('ML Code Quality Checker opened! Analyze your ML code for best practices.');
-		} catch (error) {
-			notificationService.error(`Failed to open ML Code Quality Checker: ${error}`);
-		}
-	}
+        try {
+            await editorService.openEditor({
+                resource: URI.parse('untitled:code-checker.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateCodeChecker(): string {
-		return `<!DOCTYPE html>
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).setValue(checkerHtml);
+            }
+
+            notificationService.info('ML Code Quality Checker opened! Analyze your ML code for best practices.');
+        } catch (error) {
+            notificationService.error(`Failed to open ML Code Quality Checker: ${error}`);
+        }
+    }
+
+    private generateCodeChecker(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>ML Code Quality Checker</title>
@@ -2090,11 +2086,11 @@ class MLCodeQualityAction extends Action2 {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .upload-area { 
-            border: 2px dashed #007acc; 
-            border-radius: 8px; 
-            padding: 40px; 
-            text-align: center; 
+        .upload-area {
+            border: 2px dashed #007acc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -2117,7 +2113,7 @@ class MLCodeQualityAction extends Action2 {
 <body>
     <div class="container">
         <h1>🔍 ML Code Quality Checker</h1>
-        
+
         <div class="upload-area" id="uploadArea">
             <h3>📁 Drop a Python file (.py) here or click to upload</h3>
             <p>Supports Python files containing ML code.</p>
@@ -2135,17 +2131,17 @@ class MLCodeQualityAction extends Action2 {
                     <h3>Code Metrics</h3>
                     <div id="codeMetrics" style="white-space: pre-wrap; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Code Complexity</h3>
                     <canvas id="complexityChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Code Duplication</h3>
                     <div id="duplicationImpact"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Dataset Statistics</h3>
                     <table class="stats-table" id="statsTable">
@@ -2210,19 +2206,19 @@ class MLCodeQualityAction extends Action2 {
             }
 
             codeMetrics = '';
-            codeMetrics += `File: ${fileInput.files[0].name}\n`;
-            codeMetrics += `Lines of Code: ${codeContent.split('\n').length}\n`;
-            codeMetrics += `Characters: ${codeContent.length}\n`;
-            codeMetrics += `\nCode Quality Metrics:\n`;
+            codeMetrics += 'File: ' + fileInput.files[0].name + '\\n';
+            codeMetrics += 'Lines of Code: ' + codeContent.split('\\n').length + '\\n';
+            codeMetrics += 'Characters: ' + codeContent.length + '\\n';
+            codeMetrics += '\\nCode Quality Metrics:\\n';
 
             // Placeholder for actual analysis logic
             // This would involve parsing the Python code,
             // using a linter (e.g., pylint, flake8, etc.),
             // and extracting metrics.
             // For now, we'll just show a placeholder.
-            codeMetrics += `Placeholder for ML Code Quality Analysis.\n`;
-            codeMetrics += `Please implement a proper ML code linter and metric extractor.\n`;
-            codeMetrics += `This feature is under development.`;
+            codeMetrics += 'Placeholder for ML Code Quality Analysis.\\n';
+            codeMetrics += 'Please implement a proper ML code linter and metric extractor.\\n';
+            codeMetrics += 'This feature is under development.';
 
             document.getElementById('codeMetrics').textContent = codeMetrics;
 
@@ -2282,48 +2278,48 @@ class MLCodeQualityAction extends Action2 {
     </script>
 </body>
 </html>`;
-	}
+    }
 }
 
 // Data Generator
 class DataGeneratorAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.dataGenerator',
-			title: localize2('dataGenerator', 'ML: Data Generator'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.dataGenerator',
+            title: localize2('dataGenerator', 'ML: Data Generator'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		
-		try {
-			const generatorHtml = this.generateDataGenerator();
-			
-			await editorService.openEditor({
-				resource: URI.parse('untitled:data-generator.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(generatorHtml);
-			}
+        try {
+            const generatorHtml = this.generateDataGenerator();
 
-			notificationService.info('Data Generator opened! Generate synthetic datasets for ML training.');
-		} catch (error) {
-			notificationService.error(`Failed to open Data Generator: ${error}`);
-		}
-	}
+            await editorService.openEditor({
+                resource: URI.parse('untitled:data-generator.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateDataGenerator(): string {
-		return `<!DOCTYPE html>
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).setValue(generatorHtml);
+            }
+
+            notificationService.info('Data Generator opened! Generate synthetic datasets for ML training.');
+        } catch (error) {
+            notificationService.error(`Failed to open Data Generator: ${error}`);
+        }
+    }
+
+    private generateDataGenerator(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>Data Generator</title>
@@ -2332,11 +2328,11 @@ class DataGeneratorAction extends Action2 {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .upload-area { 
-            border: 2px dashed #007acc; 
-            border-radius: 8px; 
-            padding: 40px; 
-            text-align: center; 
+        .upload-area {
+            border: 2px dashed #007acc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -2359,7 +2355,7 @@ class DataGeneratorAction extends Action2 {
 <body>
     <div class="container">
         <h1>🧠 Data Generator</h1>
-        
+
         <div class="upload-area" id="uploadArea">
             <h3>📁 Drop a dataset description (.json) here or click to upload</h3>
             <p>Supports JSON files containing dataset specifications.</p>
@@ -2377,7 +2373,7 @@ class DataGeneratorAction extends Action2 {
                     <h3>Generated Dataset</h3>
                     <canvas id="generatedDatasetChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Dataset Statistics</h3>
                     <table class="stats-table" id="statsTable">
@@ -2524,11 +2520,11 @@ class DataGeneratorAction extends Action2 {
 
         function generateStatistics() {
             const stats = {};
-            
+
             datasetSpec.columns.forEach(col => {
                 const values = generatedDataset.map(row => row[col.name]).filter(v => !isNaN(v));
                 const numericValues = values.filter(v => typeof v === 'number');
-                
+
                 stats[col.name] = {
                     type: numericValues.length > values.length * 0.8 ? 'Numeric' : 'Categorical',
                     count: values.length,
@@ -2541,7 +2537,7 @@ class DataGeneratorAction extends Action2 {
 
             const tbody = document.querySelector('#statsTable tbody');
             tbody.innerHTML = '';
-            
+
             Object.entries(stats).forEach(([col, stat]) => {
                 tbody.innerHTML += \`
                     <tr>
@@ -2567,48 +2563,48 @@ class DataGeneratorAction extends Action2 {
     </script>
 </body>
 </html>`;
-	}
+    }
 }
 
 // Model Comparator
 class ModelComparatorAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.modelComparator',
-			title: localize2('modelComparator', 'ML: Model Comparator'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.modelComparator',
+            title: localize2('modelComparator', 'ML: Model Comparator'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		
-		try {
-			const comparatorHtml = this.generateModelComparator();
-			
-			await editorService.openEditor({
-				resource: URI.parse('untitled:model-comparator.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(comparatorHtml);
-			}
+        try {
+            const comparatorHtml = this.generateModelComparator();
 
-			notificationService.info('Model Comparator opened! Compare ML model performance.');
-		} catch (error) {
-			notificationService.error(`Failed to open Model Comparator: ${error}`);
-		}
-	}
+            await editorService.openEditor({
+                resource: URI.parse('untitled:model-comparator.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateModelComparator(): string {
-		return `<!DOCTYPE html>
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).setValue(comparatorHtml);
+            }
+
+            notificationService.info('Model Comparator opened! Compare ML model performance.');
+        } catch (error) {
+            notificationService.error(`Failed to open Model Comparator: ${error}`);
+        }
+    }
+
+    private generateModelComparator(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>Model Comparator</title>
@@ -2617,11 +2613,11 @@ class ModelComparatorAction extends Action2 {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .upload-area { 
-            border: 2px dashed #007acc; 
-            border-radius: 8px; 
-            padding: 40px; 
-            text-align: center; 
+        .upload-area {
+            border: 2px dashed #007acc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -2644,7 +2640,7 @@ class ModelComparatorAction extends Action2 {
 <body>
     <div class="container">
         <h1>📊 Model Comparator</h1>
-        
+
         <div class="upload-area" id="uploadArea">
             <h3>📁 Drop two model files (.pkl, .h5, .pb, .saved_model) here or click to upload</h3>
             <p>Supports multiple model formats.</p>
@@ -2662,17 +2658,17 @@ class ModelComparatorAction extends Action2 {
                     <h3>Model Performance Comparison</h3>
                     <canvas id="performanceComparisonChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Model Size Comparison</h3>
                     <canvas id="sizeComparisonChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Model Complexity Comparison</h3>
                     <div id="complexityComparison"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Dataset Statistics</h3>
                     <table class="stats-table" id="statsTable">
@@ -2736,7 +2732,7 @@ class ModelComparatorAction extends Action2 {
                             compareModels();
                         }
                     } catch (error) {
-                        alert(`Error loading model ${files[i].name}: ${error}`);
+                        alert('Error loading model ' + files[i].name + ': ' + error);
                     }
                 };
                 reader.readAsText(files[i]);
@@ -2767,8 +2763,8 @@ class ModelComparatorAction extends Action2 {
                         performance[name] = 'Placeholder for model performance analysis.';
                         size[name] = 'Placeholder for model size.';
                     } catch (error) {
-                        performance[name] = `Error loading model for analysis: ${error}`;
-                        size[name] = `Error loading model for analysis: ${error}`;
+                                                 performance[name] = 'Error loading model for analysis: ' + error;
+                         size[name] = 'Error loading model for analysis: ' + error;
                     }
                 } else {
                     performance[name] = 'Model data not found.';
@@ -2855,7 +2851,7 @@ class ModelComparatorAction extends Action2 {
                         // This would involve loading the model and analyzing its architecture.
                         complexity[name] = 'Placeholder for model complexity analysis.';
                     } catch (error) {
-                        complexity[name] = `Error loading model for analysis: ${error}`;
+                                                 complexity[name] = 'Error loading model for analysis: ' + error;
                     }
                 } else {
                     complexity[name] = 'Model data not found.';
@@ -2865,37 +2861,37 @@ class ModelComparatorAction extends Action2 {
 
             let complexityHtml = '<h3>Model Complexity Comparison</h3>';
             Object.entries(complexityData).forEach(([modelName, metrics]) => {
-                complexityHtml += `<p><strong>${modelName}:</strong></p>`;
+                                 complexityHtml += '<p><strong>' + modelName + ':</strong></p>';
                 Object.entries(metrics).forEach(([metricName, value]) => {
-                    complexityHtml += `<p>${metricName}: ${value}</p>`;
-                });
-                complexityHtml += `<hr>`;
+                                         complexityHtml += '<p>' + metricName + ': ' + value + '</p>';
+    });
+                complexityHtml += '<hr>';
             });
-            document.getElementById('complexityComparison').innerHTML = complexityHtml;
+document.getElementById('complexityComparison').innerHTML = complexityHtml;
         }
 
-        function generateStatistics() {
-            const stats = {};
-            
-            datasetSpec.columns.forEach(col => {
-                const values = generatedDataset.map(row => row[col.name]).filter(v => !isNaN(v));
-                const numericValues = values.filter(v => typeof v === 'number');
-                
-                stats[col.name] = {
-                    type: numericValues.length > values.length * 0.8 ? 'Numeric' : 'Categorical',
-                    count: values.length,
-                    mean: numericValues.length > 0 ? (numericValues.reduce((a, b) => a + b, 0) / numericValues.length).toFixed(2) : 'N/A',
-                    std: numericValues.length > 0 ? Math.sqrt(numericValues.reduce((sq, n) => sq + Math.pow(n - stats[col.name]?.mean || 0, 2), 0) / numericValues.length).toFixed(2) : 'N/A',
-                    min: numericValues.length > 0 ? Math.min(...numericValues).toFixed(2) : 'N/A',
-                    max: numericValues.length > 0 ? Math.max(...numericValues).toFixed(2) : 'N/A'
-                };
-            });
+function generateStatistics() {
+    const stats = {};
 
-            const tbody = document.querySelector('#statsTable tbody');
-            tbody.innerHTML = '';
-            
-            Object.entries(stats).forEach(([col, stat]) => {
-                tbody.innerHTML += \`
+    datasetSpec.columns.forEach(col => {
+        const values = generatedDataset.map(row => row[col.name]).filter(v => !isNaN(v));
+        const numericValues = values.filter(v => typeof v === 'number');
+
+        stats[col.name] = {
+            type: numericValues.length > values.length * 0.8 ? 'Numeric' : 'Categorical',
+            count: values.length,
+            mean: numericValues.length > 0 ? (numericValues.reduce((a, b) => a + b, 0) / numericValues.length).toFixed(2) : 'N/A',
+            std: numericValues.length > 0 ? Math.sqrt(numericValues.reduce((sq, n) => sq + Math.pow(n - stats[col.name]?.mean || 0, 2), 0) / numericValues.length).toFixed(2) : 'N/A',
+            min: numericValues.length > 0 ? Math.min(...numericValues).toFixed(2) : 'N/A',
+            max: numericValues.length > 0 ? Math.max(...numericValues).toFixed(2) : 'N/A'
+        };
+    });
+
+    const tbody = document.querySelector('#statsTable tbody');
+    tbody.innerHTML = '';
+
+    Object.entries(stats).forEach(([col, stat]) => {
+        tbody.innerHTML += \`
                     <tr>
                         <td>\${col}</td>
                         <td>\${stat.type}</td>
@@ -2924,48 +2920,48 @@ class ModelComparatorAction extends Action2 {
     </script>
 </body>
 </html>`;
-	}
+    }
 }
 
 // Hyperparameter Tuner
 class HyperparameterTunerAction extends Action2 {
-	constructor() {
-		super({
-			id: 'vsaware.ml.hyperTuner',
-			title: localize2('hyperTuner', 'ML: Hyperparameter Tuner'),
-			f1: true,
-			category: localize2('mlCategory', 'ML Tools')
-		});
-	}
+    constructor() {
+        super({
+            id: 'vsaware.ml.hyperTuner',
+            title: localize2('hyperTuner', 'ML: Hyperparameter Tuner'),
+            f1: true,
+            category: localize2('mlCategory', 'ML Tools')
+        });
+    }
 
-	async run(accessor: ServicesAccessor): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const editorService = accessor.get(IEditorService);
-		
-		try {
-			const tunerHtml = this.generateHyperparameterTuner();
-			
-			await editorService.openEditor({
-				resource: URI.parse('untitled:hyperparameter-tuner.html'),
-				options: { 
-					pinned: true,
-					override: 'default'
-				}
-			} as IUntitledTextEditorInput);
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
 
-			const activeEditor = editorService.activeTextEditorControl;
-			if (activeEditor) {
-				activeEditor.setValue(tunerHtml);
-			}
+        try {
+            const tunerHtml = this.generateHyperparameterTuner();
 
-			notificationService.info('Hyperparameter Tuner opened! Optimize model hyperparameters.');
-		} catch (error) {
-			notificationService.error(`Failed to open Hyperparameter Tuner: ${error}`);
-		}
-	}
+            await editorService.openEditor({
+                resource: URI.parse('untitled:hyperparameter-tuner.html'),
+                options: {
+                    pinned: true,
+                    override: 'default'
+                }
+            } as IUntitledTextResourceEditorInput);
 
-	private generateHyperparameterTuner(): string {
-		return `<!DOCTYPE html>
+            const activeEditor = editorService.activeTextEditorControl;
+            if (activeEditor) {
+                (activeEditor as any).setValue(tunerHtml);
+            }
+
+            notificationService.info('Hyperparameter Tuner opened! Optimize model hyperparameters.');
+        } catch (error) {
+            notificationService.error(`Failed to open Hyperparameter Tuner: ${error}`);
+        }
+    }
+
+    private generateHyperparameterTuner(): string {
+        return `<!DOCTYPE html>
 <html>
 <head>
     <title>Hyperparameter Tuner</title>
@@ -2974,11 +2970,11 @@ class HyperparameterTunerAction extends Action2 {
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .upload-area { 
-            border: 2px dashed #007acc; 
-            border-radius: 8px; 
-            padding: 40px; 
-            text-align: center; 
+        .upload-area {
+            border: 2px dashed #007acc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
             margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -3001,7 +2997,7 @@ class HyperparameterTunerAction extends Action2 {
 <body>
     <div class="container">
         <h1>🔧 Hyperparameter Tuner</h1>
-        
+
         <div class="upload-area" id="uploadArea">
             <h3>📁 Drop a dataset specification (.json) and a model template (.py) here or click to upload</h3>
             <p>Supports JSON files containing dataset specifications and Python files for model templates.</p>
@@ -3019,12 +3015,12 @@ class HyperparameterTunerAction extends Action2 {
                     <h3>Model Architecture</h3>
                     <div id="modelArchitecture" style="white-space: pre-wrap; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Hyperparameter Grid</h3>
                     <div id="hyperparameterGrid"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Dataset Statistics</h3>
                     <table class="stats-table" id="statsTable">
@@ -3049,17 +3045,17 @@ class HyperparameterTunerAction extends Action2 {
                     <h3>Training Progress</h3>
                     <canvas id="tuningProgressChart" width="400" height="300"></canvas>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Best Model</h3>
                     <div id="bestModelSummary" style="white-space: pre-wrap; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Hyperparameter Impact</h3>
                     <div id="hyperparameterImpact"></div>
                 </div>
-                
+
                 <div class="chart-card">
                     <h3>Dataset Statistics</h3>
                     <table class="stats-table" id="statsTable">
@@ -3126,7 +3122,7 @@ class HyperparameterTunerAction extends Action2 {
                             document.getElementById('tunerSetup').classList.remove('hidden');
                             setupTuning();
                         } catch (error) {
-                            alert(`Error loading dataset spec file ${files[i].name}: ${error}`);
+                                                         alert('Error loading dataset spec file ' + files[i].name + ': ' + error);
                         }
                     } else if (files[i].name.endsWith('.py')) {
                         try {
@@ -3135,7 +3131,7 @@ class HyperparameterTunerAction extends Action2 {
                             document.getElementById('tunerSetup').classList.remove('hidden');
                             setupTuning();
                         } catch (error) {
-                            alert(`Error loading model template file ${files[i].name}: ${error}`);
+                                                         alert('Error loading model template file ' + files[i].name + ': ' + error);
                         }
                     }
                 };
@@ -3193,7 +3189,7 @@ class HyperparameterTunerAction extends Action2 {
                 document.getElementById('hyperparameterGrid').innerHTML = this.generateHyperparameterGridHtml(hyperparameterGrid);
 
             } catch (error) {
-                modelArchitecture = `Error loading model architecture: ${error}`;
+                                 modelArchitecture = 'Error loading model architecture: ' + error;
                 document.getElementById('modelArchitecture').textContent = modelArchitecture;
                 console.error(error);
             }
@@ -3206,259 +3202,255 @@ class HyperparameterTunerAction extends Action2 {
             html += '<thead><tr><th>Hyperparameter</th><th>Type</th><th>Values</th></tr></thead>';
             html += '<tbody>';
             Object.entries(grid).forEach(([param, options]) => {
-                html += `<tr><td>${param}</td><td>${options.type === 'range' ? 'Range' : 'Select'}</td><td>`;
+                                 html += '<tr><td>' + param + '</td><td>' + (options.type === 'range' ? 'Range' : 'Select') + '</td><td>';
                 if (options.type === 'range') {
-                    html += `Min: ${options.min.toFixed(4)}, Max: ${options.max.toFixed(4)}, Step: ${options.step.toFixed(4)}`;
+                                         html += 'Min: ' + options.min.toFixed(4) + ', Max: ' + options.max.toFixed(4) + ', Step: ' + options.step.toFixed(4);
                 } else if (options.type === 'select') {
-                    html += options.values.map(val => `<span style="padding: 2px 5px; background-color: #e0e0e0; border-radius: 3px;">${val}</span>`).join(', ');
-                }
+                                         html += options.values.map(val => '<span style="padding: 2px 5px; background-color: #e0e0e0; border-radius: 3px;">' + val + '</span>').join(', ');
+    }
                 html += '</td></tr>';
-            });
-            html += '</tbody></table>';
-            return html;
+});
+html += '</tbody></table>';
+return html;
         }
 
-        function startTuning() {
-            if (isTuning) return;
-            if (!datasetSpec || !datasetSpec.columns || datasetSpec.columns.length === 0) {
-                alert('Please setup the hyperparameter grid first.');
-                return;
-            }
-            if (!modelCode) {
-                alert('Please setup the model architecture first.');
-                return;
-            }
+function startTuning() {
+    if (isTuning) return;
+    if (!datasetSpec || !datasetSpec.columns || datasetSpec.columns.length === 0) {
+        alert('Please setup the hyperparameter grid first.');
+        return;
+    }
+    if (!modelCode) {
+        alert('Please setup the model architecture first.');
+        return;
+    }
 
-            isTuning = true;
-            document.getElementById('tuningProcess').classList.remove('hidden');
-            document.getElementById('tunerSetup').classList.add('hidden');
-            document.getElementById('tuningProgressChart').getContext('2d').clearRect(0, 0, document.getElementById('tuningProgressChart').width, document.getElementById('tuningProgressChart').height);
-            document.getElementById('bestModelSummary').textContent = '';
-            document.getElementById('hyperparameterImpact').innerHTML = '';
-            tuningProgress = [];
-            bestModel = null;
+    isTuning = true;
+    document.getElementById('tuningProcess').classList.remove('hidden');
+    document.getElementById('tunerSetup').classList.add('hidden');
+    document.getElementById('tuningProgressChart').getContext('2d').clearRect(0, 0, document.getElementById('tuningProgressChart').width, document.getElementById('tuningProgressChart').height);
+    document.getElementById('bestModelSummary').textContent = '';
+    document.getElementById('hyperparameterImpact').innerHTML = '';
+    tuningProgress = [];
+    bestModel = null;
 
-            const modelName = 'tuned_model'; // Placeholder for model name
-            const taskType = 'classification'; // Placeholder for task type
-            const model = this.createModelFromCode(modelCode, taskType);
+    const modelName = 'tuned_model'; // Placeholder for model name
+    const taskType = 'classification'; // Placeholder for task type
+    const model = this.createModelFromCode(modelCode, taskType);
 
-            const xs = tf.tensor2d(datasetSpec.data); // Assuming datasetSpec.data is the training data
-            const ys = tf.tensor2d(datasetSpec.labels); // Assuming datasetSpec.labels is the training labels
+    const xs = tf.tensor2d(datasetSpec.data); // Assuming datasetSpec.data is the training data
+    const ys = tf.tensor2d(datasetSpec.labels); // Assuming datasetSpec.labels is the training labels
 
-            const objective = (params) => {
-                const model = this.createModelFromCode(modelCode, taskType, params);
-                return new Promise(resolve => {
-                    model.fit(xs, ys, {
-                        epochs: 10, // Short epochs for quick tuning
-                        batchSize: 32,
-                        callbacks: {
-                            onEpochEnd: (epoch, logs) => {
-                                tuningProgress.push({
-                                    epoch: epoch,
-                                    loss: logs.loss,
-                                    accuracy: logs.acc,
-                                    learning_rate: params.learning_rate
-                                });
-                                updateTuningProgressChart();
-                            }
-                        }
-                    }).then(logs => {
-                        model.dispose();
-                        xs.dispose();
-                        ys.dispose();
-                        resolve(logs.acc); // Return accuracy as objective
-                    });
-                });
-            };
-
-            const search = new d3.RandomForestSearch({
-                objective: objective,
-                parameters: hyperparameterGrid,
-                numIterations: 100, // Number of tuning iterations
-                numElites: 10, // Number of best results to keep
-                numThreads: 4 // Number of parallel threads
-            });
-
-            search.start(results => {
-                bestModel = results.best;
-                document.getElementById('bestModelSummary').textContent = JSON.stringify(bestModel, null, 2);
-                analyzeHyperparameterImpact();
-                alert(`Tuning complete! Best model found with accuracy: ${bestModel.value.toFixed(4)}`);
-                isTuning = false;
-            });
-        }
-
-        function stopTuning() {
-            if (isTuning) {
-                search.stop(); // Assuming search is defined globally or passed as an argument
-                alert('Tuning stopped.');
-                isTuning = false;
-            }
-        }
-
-        function createModelFromCode(code, taskType, params = {}) {
-            const model = tf.sequential();
-            const lines = code.split('\n');
-            let currentCell: string[] = [];
-            let cellType = 'code';
-
-            for (const line of lines) {
-                if (line.trim().startsWith('# %%') || line.trim().startsWith('#%%')) {
-                    // New cell marker
-                    if (currentCell.length > 0) {
-                        this.processCell(model, currentCell, taskType, params);
+    const objective = (params) => {
+        const model = this.createModelFromCode(modelCode, taskType, params);
+        return new Promise(resolve => {
+            model.fit(xs, ys, {
+                epochs: 10, // Short epochs for quick tuning
+                batchSize: 32,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        tuningProgress.push({
+                            epoch: epoch,
+                            loss: logs.loss,
+                            accuracy: logs.acc,
+                            learning_rate: params.learning_rate
+                        });
+                        updateTuningProgressChart();
                     }
-                    currentCell = [];
-                    cellType = 'code';
-                } else if (line.trim().startsWith('"""') && currentCell.length === 0) {
-                    // Markdown cell
-                    cellType = 'markdown';
-                    currentCell.push(line.replace('"""', '').trim());
-                } else {
-                    currentCell.push(line);
                 }
-            }
-            // Add the last cell
+            }).then(logs => {
+                model.dispose();
+                xs.dispose();
+                ys.dispose();
+                resolve(logs.acc); // Return accuracy as objective
+            });
+        });
+    };
+
+    const search = new d3.RandomForestSearch({
+        objective: objective,
+        parameters: hyperparameterGrid,
+        numIterations: 100, // Number of tuning iterations
+        numElites: 10, // Number of best results to keep
+        numThreads: 4 // Number of parallel threads
+    });
+
+    search.start(results => {
+        bestModel = results.best;
+        document.getElementById('bestModelSummary').textContent = JSON.stringify(bestModel, null, 2);
+        analyzeHyperparameterImpact();
+                 alert('Tuning complete! Best model found with accuracy: ' + bestModel.value.toFixed(4));
+        isTuning = false;
+    });
+}
+
+function stopTuning() {
+    if (isTuning) {
+        search.stop(); // Assuming search is defined globally or passed as an argument
+        alert('Tuning stopped.');
+        isTuning = false;
+    }
+}
+
+function createModelFromCode(code, taskType, params = {}) {
+    const model = tf.sequential();
+    const lines = code.split('\n');
+    let currentCell = [];
+    let cellType = 'code';
+
+    for (const line of lines) {
+        if (line.trim().startsWith('# %%') || line.trim().startsWith('#%%')) {
+            // New cell marker
             if (currentCell.length > 0) {
-                this.processCell(model, currentCell, taskType, params);
+                processCell(model, currentCell, taskType, params);
             }
-
-            return model;
+            currentCell = [];
+            cellType = 'code';
+        } else if (line.trim().startsWith('"""') && currentCell.length === 0) {
+            // Markdown cell
+            cellType = 'markdown';
+            currentCell.push(line.replace('"""', '').trim());
+        } else {
+            currentCell.push(line);
         }
+    }
+    // Add the last cell
+    if (currentCell.length > 0) {
+        processCell(model, currentCell, taskType, params);
+    }
 
-        private processCell(model: tf.Sequential, source: string[], taskType: string, params: any) {
-            const cellType = source[0].trim().startsWith('# %%') || source[0].trim().startsWith('#%%') ? 'code' : 'markdown';
-            const cellContent = source.join('\n').trim();
+    return model;
+}
 
-            if (cellType === 'markdown') {
-                // For markdown cells, we can't directly execute code.
-                // We'll just add it as a comment or display it.
-                model.add(tf.layers.dense({
-                    units: 1, // Dummy layer to keep the structure
-                    activation: 'linear',
-                    useBias: false,
-                    kernelInitializer: 'zeros'
-                }));
-                return;
-            }
+function processCell(model, source, taskType, params) {
+    const cellType = source[0].trim().startsWith('# %%') || source[0].trim().startsWith('#%%') ? 'code' : 'markdown';
+    const cellContent = source.join('\n').trim();
 
-            try {
-                // This is a placeholder for actual code execution.
-                // In a real application, you would use a Python interpreter
-                // or a library like `nbformat` to execute the notebook cells.
-                // For this example, we'll just add a dummy layer.
-                model.add(tf.layers.dense({
-                    units: 1, // Dummy layer to keep the structure
-                    activation: 'linear',
-                    useBias: false,
-                    kernelInitializer: 'zeros'
-                }));
-                console.log(`Executed cell (placeholder): ${cellContent}`);
-            } catch (error) {
-                console.error(`Error executing cell: ${cellContent}\n${error}`);
-                model.add(tf.layers.dense({
-                    units: 1, // Dummy layer to keep the structure
-                    activation: 'linear',
-                    useBias: false,
-                    kernelInitializer: 'zeros'
-                }));
-            }
-        }
+    if (cellType === 'markdown') {
+        // For markdown cells, we can't directly execute code.
+        // We'll just add it as a comment or display it.
+        model.add(tf.layers.dense({
+            units: 1, // Dummy layer to keep the structure
+            activation: 'linear',
+            useBias: false,
+            kernelInitializer: 'zeros'
+        }));
+        return;
+    }
 
-        function updateTuningProgressChart() {
-            const ctx = document.getElementById('tuningProgressChart').getContext('2d');
-            if (tuningProgressChart) tuningProgressChart.destroy();
+    try {
+        model.add(tf.layers.dense({
+            units: 1, // Dummy layer to keep the structure
+            activation: 'linear',
+            useBias: false,
+            kernelInitializer: 'zeros'
+        }));
+        console.log('Executed cell(placeholder): ' + cellContent);
+    } catch (error) {
+        console.error('Error executing cell: ' + cellContent + '\n' + error);
+        model.add(tf.layers.dense({
+            units: 1, // Dummy layer to keep the structure
+            activation: 'linear',
+            useBias: false,
+            kernelInitializer: 'zeros'
+        }));
+    }
+}
 
-            const labels = tuningProgress.map(item => item.epoch);
-            const lossData = tuningProgress.map(item => item.loss);
-            const accuracyData = tuningProgress.map(item => item.accuracy);
-            const lrData = tuningProgress.map(item => item.learning_rate);
+function updateTuningProgressChart() {
+    const ctx = document.getElementById('tuningProgressChart').getContext('2d');
+    if (tuningProgressChart) tuningProgressChart.destroy();
 
-            tuningProgressChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Loss',
-                            data: lossData,
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            fill: true
-                        },
-                        {
-                            label: 'Accuracy',
-                            data: accuracyData,
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            fill: true
-                        },
-                        {
-                            label: 'Learning Rate',
-                            data: lrData,
-                            borderColor: 'rgba(75, 192, 192, 1)',
-                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                            fill: true
-                        }
-                    ]
+    const labels = tuningProgress.map(item => item.epoch);
+    const lossData = tuningProgress.map(item => item.loss);
+    const accuracyData = tuningProgress.map(item => item.accuracy);
+    const lrData = tuningProgress.map(item => item.learning_rate);
+
+    tuningProgressChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Loss',
+                    data: lossData,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    fill: true
                 },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { title: { display: true, text: 'Iteration' } },
-                        y: { title: { display: true, text: 'Value' } }
-                    }
+                {
+                    label: 'Accuracy',
+                    data: accuracyData,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    fill: true
+                },
+                {
+                    label: 'Learning Rate',
+                    data: lrData,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true
                 }
-            });
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: 'Iteration' } },
+                y: { title: { display: true, text: 'Value' } }
+            }
         }
+    });
+}
 
-        function analyzeHyperparameterImpact() {
-            const impact = {};
-            Object.entries(hyperparameterGrid).forEach(([param, options]) => {
-                if (options.type === 'range') {
-                    const values = tuningProgress.map(item => item[param]);
-                    if (values.length > 0) {
-                        impact[param] = {
-                            mean: values.reduce((a, b) => a + b, 0) / values.length,
-                            std: values.length > 1 ? Math.sqrt(values.reduce((sq, n) => sq + Math.pow(n - impact[param]?.mean || 0, 2), 0) / (values.length - 1)) : 0
-                        };
-                    }
-                } else if (options.type === 'select') {
-                    const values = tuningProgress.map(item => item[param]);
-                    if (values.length > 0) {
-                        impact[param] = {
-                            mean: values.reduce((a, b) => a + b, 0) / values.length,
-                            std: values.length > 1 ? Math.sqrt(values.reduce((sq, n) => sq + Math.pow(n - impact[param]?.mean || 0, 2), 0) / (values.length - 1)) : 0
-                        };
-                    }
-                }
-            });
-
-            let impactHtml = '<h3>Hyperparameter Impact</h3>';
-            Object.entries(impact).forEach(([param, stats]) => {
-                impactHtml += `<p><strong>${param}:</strong> Mean = ${stats.mean.toFixed(4)}, Std = ${stats.std.toFixed(4)}</p>`;
-            });
-            document.getElementById('hyperparameterImpact').innerHTML = impactHtml;
+function analyzeHyperparameterImpact() {
+    const impact = {};
+    Object.entries(hyperparameterGrid).forEach(([param, options]) => {
+        if (options.type === 'range') {
+            const values = tuningProgress.map(item => item[param]);
+            if (values.length > 0) {
+                impact[param] = {
+                    mean: values.reduce((a, b) => a + b, 0) / values.length,
+                    std: values.length > 1 ? Math.sqrt(values.reduce((sq, n) => sq + Math.pow(n - impact[param]?.mean || 0, 2), 0) / (values.length - 1)) : 0
+                };
+            }
+        } else if (options.type === 'select') {
+            const values = tuningProgress.map(item => item[param]);
+            if (values.length > 0) {
+                impact[param] = {
+                    mean: values.reduce((a, b) => a + b, 0) / values.length,
+                    std: values.length > 1 ? Math.sqrt(values.reduce((sq, n) => sq + Math.pow(n - impact[param]?.mean || 0, 2), 0) / (values.length - 1)) : 0
+                };
+            }
         }
+    });
 
-        function resetTuner() {
-            datasetSpec = {};
-            modelCode = '';
-            modelArchitecture = '';
-            hyperparameterGrid = {};
-            tuningProgress = [];
-            bestModel = null;
-            document.getElementById('tunerSetup').classList.add('hidden');
-            document.getElementById('tuningProcess').classList.add('hidden');
-            document.getElementById('tuningProgressChart').getContext('2d').clearRect(0, 0, document.getElementById('tuningProgressChart').width, document.getElementById('tuningProgressChart').height);
-            document.getElementById('bestModelSummary').textContent = '';
-            document.getElementById('hyperparameterImpact').innerHTML = '';
-            document.getElementById('statsTable').innerHTML = '';
-        }
-    </script>
-</body>
-</html>`;
-	}
+    let impactHtml = '<h3>Hyperparameter Impact</h3>';
+    Object.entries(impact).forEach(([param, stats]) => {
+        impactHtml += '<p><strong>' + param + ':</strong> Mean = ' + stats.mean.toFixed(4) + ', Std = ' + stats.std.toFixed(4) + '</p>';
+    });
+    document.getElementById('hyperparameterImpact').innerHTML = impactHtml;
+}
+
+function resetTuner() {
+    datasetSpec = {};
+    modelCode = '';
+    modelArchitecture = '';
+    hyperparameterGrid = {};
+    tuningProgress = [];
+    bestModel = null;
+    document.getElementById('tunerSetup').classList.add('hidden');
+    document.getElementById('tuningProcess').classList.add('hidden');
+    document.getElementById('tuningProgressChart').getContext('2d').clearRect(0, 0, document.getElementById('tuningProgressChart').width, document.getElementById('tuningProgressChart').height);
+    document.getElementById('bestModelSummary').textContent = '';
+    document.getElementById('hyperparameterImpact').innerHTML = '';
+    document.getElementById('statsTable').innerHTML = '';
+}
+</script>
+    </body>
+    </html>`;
+    }
 }
 
 // Register all ML actions
