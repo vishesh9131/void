@@ -54,7 +54,7 @@ export const defaultWindowTitleSeparator = isMacintosh ? ' \u2014 ' : ' - ';
 export class WindowTitle extends Disposable {
 
 	private static readonly NLS_USER_IS_ADMIN = isWindows ? localize('userIsAdmin', "[Administrator]") : localize('userIsSudo', "[Superuser]");
-	private static readonly NLS_EXTENSION_HOST = localize('devExtensionWindowTitlePrefix', "[Extension Development Host]");
+	private static readonly NLS_EXTENSION_HOST = localize('devExtensionWindowTitlePrefix', "vs aware");
 	private static readonly TITLE_DIRTY = '\u25cf ';
 
 	private readonly properties: ITitleProperties = { isPure: true, isAdmin: false, prefix: undefined };

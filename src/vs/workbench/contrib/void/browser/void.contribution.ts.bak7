@@ -1,0 +1,2500 @@
+/*--------------------------------------------------------------------------------------
+ *  Copyright 2025 Glass Devtools, Inc. All rights reserved.
+ *  Licensed under the Apache License, Version 2.0. See LICENSE.txt for more information.
+ *--------------------------------------------------------------------------------------*/
+
+
+// register inline diffs
+import './editCodeService.js'
+
+// register Sidebar pane, state, actions (keybinds, menus) (Ctrl+L)
+import './sidebarActions.js'
+import './sidebarPane.js'
+
+// register quick edit (Ctrl+K)
+import './quickEditActions.js'
+
+
+// register Autocomplete
+import './autocompleteService.js'
+
+// register Context services
+// import './contextGatheringService.js'
+// import './contextUserChangesService.js'
+
+// settings pane
+import './voidSettingsPane.js'
+
+// register css
+import './media/void.css'
+
+// update (frontend part, also see platform/)
+import './voidUpdateActions.js'
+
+import './convertToLLMMessageWorkbenchContrib.js'
+
+// tools
+import './toolsService.js'
+import './terminalToolService.js'
+
+// register Thread History
+import './chatThreadService.js'
+
+// ping
+import './metricsPollService.js'
+
+// helper services
+import './helperServices/consistentItemService.js'
+
+// register selection helper
+import './voidSelectionHelperWidget.js'
+
+// register tooltip service
+import './tooltipService.js'
+
+// register onboarding service
+import './voidOnboardingService.js'
+
+// register misc service
+import './miscWokrbenchContrib.js'
+
+// register file service (for explorer context menu)
+import './fileService.js'
+
+// register source control management
+import './voidSCMService.js'
+
+// ---------- common (unclear if these actually need to be imported, because they're already imported wherever they're used) ----------
+
+// llmMessage
+import '../common/sendLLMMessageService.js'
+
+// voidSettings
+import '../common/voidSettingsService.js'
+
+// refreshModel
+import '../common/refreshModelService.js'
+
+// metrics
+import '../common/metricsService.js'
+
+// updates
+import '../common/voidUpdateService.js'
+
+// model service
+import '../common/voidModelService.js'
+
+import { Disposable } from 'vs/base/common/lifecycle.js';
+
+import { Registry } from 'vs/platform/registry/common/platform.js';
+import { IWorkbenchContribution, IWorkbenchContributionsRegistry, Extensions as WorkbenchExtensions } from 'vs/workbench/common/contributions.js';
+import { LifecyclePhase } from 'vs/workbench/services/lifecycle/common/lifecycle.js';
+import { registerAction2, MenuId, Action2 } from 'vs/platform/actions/common/actions.js';
+import { IEditorService } from 'vs/workbench/services/editor/common/editorService.js';
+import { IFileService } from 'vs/platform/files/common/files.js';
+import { INotificationService } from 'vs/platform/notification/common/notification.js';
+import { ServicesAccessor } from 'vs/platform/instantiation/common/instantiation.js';
+import { URI } from 'vs/base/common/uri.js';
+import { KeybindingWeight } from 'vs/platform/keybinding/common/keybindingsRegistry.js';
+import { KeyMod, KeyCode } from 'vs/base/common/keyCodes.js';
+import { ContextKeyExpr } from 'vs/platform/contextkey/common/contextkey.js';
+import { VSBuffer } from 'vs/base/common/buffer.js';
+import { ITextModel } from 'vs/editor/common/model.js';
+import './react/VoidOnboarding';
+
+// Python to Notebook Converter Action
+class ConvertPythonToNotebookAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.convertPyToNotebook',
+            title: { value: '🔄 Convert Python File to Notebook', original: 'Convert Python File to Notebook' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyN,
+                when: undefined
+            },
+            menu: {
+                id: MenuId.ExplorerContext,
+                when: ContextKeyExpr.equals('resourceExtname', '.py'),
+                group: 'mltools@1'
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const fileService = accessor.get(IFileService);
+        const notificationService = accessor.get(INotificationService);
+
+        const activeEditor = editorService.activeTextEditorControl;
+        if (!activeEditor) {
+            notificationService.warn('No active Python file found!');
+            return;
+        }
+
+        const model = activeEditor.getModel() as ITextModel;
+        if (!model || !model.uri.path.endsWith('.py')) {
+            notificationService.warn('Please open a Python file first!');
+            return;
+        }
+
+        try {
+            const pythonContent = model.getValue();
+            const notebookContent = this.convertPythonToNotebook(pythonContent);
+
+            // Create new notebook file
+            const notebookUri = URI.file(model.uri.path.replace('.py', '.ipynb'));
+            await fileService.writeFile(notebookUri, VSBuffer.fromString(JSON.stringify(notebookContent, null, 2)));
+
+            // Open the new notebook
+            await editorService.openEditor({ resource: notebookUri });
+
+            notificationService.info(`✅ Converted to notebook: ${notebookUri.fsPath}`);
+        } catch (error) {
+            notificationService.error(`Failed to convert: ${error}`);
+        }
+    }
+
+    private convertPythonToNotebook(pythonCode: string): any {
+        const lines = pythonCode.split('\n');
+        const cells: any[] = [];
+        let currentCell: string[] = [];
+        let cellType = 'code';
+
+        for (const line of lines) {
+            // Detect markdown cells (comments starting with # %%)
+            if (line.trim().startsWith('# %%')) {
+                // Save previous cell
+                if (currentCell.length > 0) {
+                    cells.push(this.createCell(cellType, currentCell.join('\n')));
+                    currentCell = [];
+                }
+
+                // Start new markdown cell if it has markdown content
+                if (line.includes('[markdown]')) {
+                    cellType = 'markdown';
+                    const markdownContent = line.replace('# %% [markdown]', '').trim();
+                    if (markdownContent) {
+                        currentCell.push(markdownContent);
+                    }
+                } else {
+                    cellType = 'code';
+                }
+                continue;
+            }
+
+            // Handle markdown content in comments
+            if (cellType === 'markdown' && line.trim().startsWith('#')) {
+                currentCell.push(line.replace(/^#\s?/, ''));
+            } else if (cellType === 'code') {
+                currentCell.push(line);
+            } else {
+                // Switch back to code cell
+                if (currentCell.length > 0) {
+                    cells.push(this.createCell('markdown', currentCell.join('\n')));
+                    currentCell = [];
+                }
+                cellType = 'code';
+                currentCell.push(line);
+            }
+        }
+
+        // Add final cell
+        if (currentCell.length > 0) {
+            cells.push(this.createCell(cellType, currentCell.join('\n')));
+        }
+
+        return {
+            cells,
+            metadata: {
+                kernelspec: {
+                    display_name: 'Python 3',
+                    language: 'python',
+                    name: 'python3'
+                },
+                language_info: {
+                    name: 'python',
+                    version: '3.8.0'
+                }
+            },
+            nbformat: 4,
+            nbformat_minor: 4
+        };
+    }
+
+    private createCell(cellType: string, source: string): any {
+        return {
+            cell_type: cellType,
+            metadata: {},
+            source: source.split('\n'),
+            ...(cellType === 'code' ? {
+                execution_count: null,
+                outputs: []
+            } : {})
+        };
+    }
+}
+
+// Neural Network Playground Action
+class NeuralNetworkPlaygroundAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.openNeuralPlayground',
+            title: { value: '🧠 Neural Network Playground', original: 'Neural Network Playground' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyP,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+
+        // Create a custom webview for the neural network playground
+        const playgroundHtml = this.generatePlaygroundHtml();
+
+        // For now, create a temporary HTML file and open it
+        const tempUri = URI.file('/tmp/neural_playground.html');
+        const fileService = accessor.get(IFileService);
+
+        try {
+            await fileService.writeFile(tempUri, VSBuffer.fromString(playgroundHtml));
+            await editorService.openEditor({ resource: tempUri });
+        } catch (error) {
+            console.error('Failed to open neural playground:', error);
+        }
+    }
+
+    private generatePlaygroundHtml(): string {
+        return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network Playground - VS Aware</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #1e1e1e; color: #fff; }
+        .playground { display: flex; gap: 20px; }
+        .controls { width: 300px; background: #2d2d30; padding: 20px; border-radius: 8px; }
+        .visualization { flex: 1; background: #252526; border-radius: 8px; padding: 20px; min-height: 600px; }
+        .layer { margin: 10px 0; }
+        .neuron { fill: #007acc; stroke: #fff; stroke-width: 2; cursor: pointer; }
+        .connection { stroke: #666; stroke-width: 1; }
+        button { background: #007acc; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #005a9e; }
+        input, select { background: #3c3c3c; color: white; border: 1px solid #464647; padding: 5px; border-radius: 3px; }
+        .metric { margin: 10px 0; padding: 10px; background: #3c3c3c; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🧠 Neural Network Playground - VS Aware</h1>
+    <div class="playground">
+        <div class="controls">
+            <h3>Network Architecture</h3>
+            <div class="layer">
+                <label>Hidden Layers: </label>
+                <select id="hiddenLayers">
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+            <div class="layer">
+                <label>Neurons per Layer: </label>
+                <input type="number" id="neuronsPerLayer" value="4" min="1" max="8">
+            </div>
+            <div class="layer">
+                <label>Activation: </label>
+                <select id="activation">
+                    <option value="relu" selected>ReLU</option>
+                    <option value="tanh">Tanh</option>
+                    <option value="sigmoid">Sigmoid</option>
+                </select>
+            </div>
+
+            <h3>Training Settings</h3>
+            <div class="layer">
+                <label>Learning Rate: </label>
+                <input type="number" id="learningRate" value="0.01" step="0.001" min="0.001" max="1">
+            </div>
+            <div class="layer">
+                <label>Batch Size: </label>
+                <input type="number" id="batchSize" value="32" min="1" max="128">
+            </div>
+            <div class="layer">
+                <label>Epochs: </label>
+                <input type="number" id="epochs" value="100" min="1" max="1000">
+            </div>
+
+            <h3>Dataset</h3>
+            <div class="layer">
+                <label>Problem Type: </label>
+                <select id="problemType">
+                    <option value="classification" selected>Classification</option>
+                    <option value="regression">Regression</option>
+                </select>
+            </div>
+            <div class="layer">
+                <button onclick="loadDataset()">📁 Load Custom Dataset</button>
+            </div>
+
+            <div class="layer">
+                <button onclick="startTraining()">🚀 Start Training</button>
+                <button onclick="stopTraining()">⏹️ Stop</button>
+                <button onclick="resetNetwork()">🔄 Reset</button>
+            </div>
+
+            <div class="metric">
+                <strong>Loss:</strong> <span id="currentLoss">-</span><br>
+                <strong>Accuracy:</strong> <span id="currentAccuracy">-</span><br>
+                <strong>Epoch:</strong> <span id="currentEpoch">0</span>
+            </div>
+        </div>
+
+        <div class="visualization">
+            <svg id="networkViz" width="100%" height="600"></svg>
+            <div style="margin-top: 20px;">
+                <canvas id="lossChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let network = null;
+        let isTraining = false;
+        let trainingData = null;
+
+        class SimpleNetwork {
+            constructor(layers) {
+                this.layers = layers;
+                this.weights = [];
+                this.biases = [];
+                this.initializeWeights();
+            }
+
+            initializeWeights() {
+                for (let i = 0; i < this.layers.length - 1; i++) {
+                    const w = [];
+                    const b = [];
+                    for (let j = 0; j < this.layers[i + 1]; j++) {
+                        const row = [];
+                        for (let k = 0; k < this.layers[i]; k++) {
+                            row.push((Math.random() - 0.5) * 2);
+                        }
+                        w.push(row);
+                        b.push((Math.random() - 0.5) * 2);
+                    }
+                    this.weights.push(w);
+                    this.biases.push(b);
+                }
+            }
+
+            forward(input) {
+                let output = input;
+                for (let i = 0; i < this.weights.length; i++) {
+                    const newOutput = [];
+                    for (let j = 0; j < this.weights[i].length; j++) {
+                        let sum = this.biases[i][j];
+                        for (let k = 0; k < output.length; k++) {
+                            sum += output[k] * this.weights[i][j][k];
+                        }
+                        newOutput.push(this.activate(sum));
+                    }
+                    output = newOutput;
+                }
+                return output;
+            }
+
+            activate(x) {
+                const activation = document.getElementById('activation').value;
+                switch (activation) {
+                    case 'relu': return Math.max(0, x);
+                    case 'tanh': return Math.tanh(x);
+                    case 'sigmoid': return 1 / (1 + Math.exp(-x));
+                    default: return Math.max(0, x);
+                }
+            }
+        }
+
+        function initializeNetwork() {
+            const hiddenLayers = parseInt(document.getElementById('hiddenLayers').value);
+            const neuronsPerLayer = parseInt(document.getElementById('neuronsPerLayer').value);
+
+            const layers = [2]; // Input layer (2D data)
+            for (let i = 0; i < hiddenLayers; i++) {
+                layers.push(neuronsPerLayer);
+            }
+            layers.push(1); // Output layer
+
+            network = new SimpleNetwork(layers);
+            visualizeNetwork();
+        }
+
+        function visualizeNetwork() {
+            const svg = d3.select('#networkViz');
+            svg.selectAll('*').remove();
+
+            if (!network) return;
+
+            const width = 600;
+            const height = 400;
+            const layerSpacing = width / (network.layers.length + 1);
+
+            // Draw connections
+            for (let i = 0; i < network.layers.length - 1; i++) {
+                for (let j = 0; j < network.layers[i]; j++) {
+                    for (let k = 0; k < network.layers[i + 1]; k++) {
+                        const x1 = layerSpacing * (i + 1);
+                        const y1 = (height / (network.layers[i] + 1)) * (j + 1);
+                        const x2 = layerSpacing * (i + 2);
+                        const y2 = (height / (network.layers[i + 1] + 1)) * (k + 1);
+
+                        svg.append('line')
+                            .attr('class', 'connection')
+                            .attr('x1', x1)
+                            .attr('y1', y1)
+                            .attr('x2', x2)
+                            .attr('y2', y2);
+                    }
+                }
+            }
+
+            // Draw neurons
+            for (let i = 0; i < network.layers.length; i++) {
+                for (let j = 0; j < network.layers[i]; j++) {
+                    const x = layerSpacing * (i + 1);
+                    const y = (height / (network.layers[i] + 1)) * (j + 1);
+
+                    svg.append('circle')
+                        .attr('class', 'neuron')
+                        .attr('cx', x)
+                        .attr('cy', y)
+                        .attr('r', 15)
+                        .on('click', function() {
+                            d3.select(this).attr('fill', '#ff6b35');
+                            setTimeout(() => d3.select(this).attr('fill', '#007acc'), 200);
+                        });
+                }
+            }
+        }
+
+        function generateSampleData() {
+            const data = [];
+            for (let i = 0; i < 1000; i++) {
+                const x = Math.random() * 4 - 2;
+                const y = Math.random() * 4 - 2;
+                // Simple classification: inside circle or outside
+                const label = (x * x + y * y) < 1 ? 1 : 0;
+                data.push({ input: [x, y], output: [label] });
+            }
+            return data;
+        }
+
+        function startTraining() {
+            if (!network) initializeNetwork();
+            if (!trainingData) trainingData = generateSampleData();
+
+            isTraining = true;
+            let epoch = 0;
+            const maxEpochs = parseInt(document.getElementById('epochs').value);
+
+            function trainStep() {
+                if (!isTraining || epoch >= maxEpochs) return;
+
+                // Simple training simulation
+                let totalLoss = 0;
+                let correct = 0;
+
+                for (const sample of trainingData) {
+                    const prediction = network.forward(sample.input);
+                    const loss = Math.pow(prediction[0] - sample.output[0], 2);
+                    totalLoss += loss;
+
+                    if (Math.round(prediction[0]) === sample.output[0]) {
+                        correct++;
+                    }
+                }
+
+                const avgLoss = totalLoss / trainingData.length;
+                const accuracy = correct / trainingData.length;
+
+                document.getElementById('currentLoss').textContent = avgLoss.toFixed(4);
+                document.getElementById('currentAccuracy').textContent = (accuracy * 100).toFixed(1) + '%';
+                document.getElementById('currentEpoch').textContent = epoch;
+
+                epoch++;
+
+                if (isTraining) {
+                    setTimeout(trainStep, 100);
+                }
+            }
+
+            trainStep();
+        }
+
+        function stopTraining() {
+            isTraining = false;
+        }
+
+        function resetNetwork() {
+            stopTraining();
+            network = null;
+            document.getElementById('currentLoss').textContent = '-';
+            document.getElementById('currentAccuracy').textContent = '-';
+            document.getElementById('currentEpoch').textContent = '0';
+            visualizeNetwork();
+        }
+
+        function loadDataset() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv,.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            // Simple CSV parsing
+                            const content = e.target.result;
+                            const lines = content.split('\\n');
+                            const data = [];
+
+                            for (let i = 1; i < lines.length; i++) {
+                                const values = lines[i].split(',').map(v => parseFloat(v.trim()));
+                                if (values.length >= 3) {
+                                    data.push({
+                                        input: values.slice(0, -1),
+                                        output: [values[values.length - 1]]
+                                    });
+                                }
+                            }
+
+                            trainingData = data;
+                            alert('Dataset loaded successfully! ' + data.length + ' samples');
+                        } catch (error) {
+                            alert('Error loading dataset: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            initializeNetwork();
+        };
+    </script>
+</body>
+</html>
+        `;
+    }
+}
+
+// More ML focused features
+class DatasetVisualizerAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.visualizeDataset',
+            title: { value: '📊 Visualize Dataset', original: 'Visualize Dataset' },
+            category: 'Developer',
+            f1: true,
+            menu: {
+                id: MenuId.ExplorerContext,
+                when: ContextKeyExpr.or(ContextKeyExpr.equals('resourceExtname', '.csv'), ContextKeyExpr.equals('resourceExtname', '.json')),
+                group: 'mltools@2'
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const notificationService = accessor.get(INotificationService);
+        const editorService = accessor.get(IEditorService);
+
+        // Generate dataset visualization HTML
+        const visualizerHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dataset Visualizer - VS Aware</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #1e1e1e; color: #fff; }
+        .controls { background: #2d2d30; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .viz-container { background: #252526; border-radius: 8px; padding: 20px; }
+        button { background: #007acc; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        select { background: #3c3c3c; color: white; border: 1px solid #464647; padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>📊 Dataset Visualizer</h1>
+    <div class="controls">
+        <input type="file" id="fileInput" accept=".csv,.json" style="margin-right: 10px;">
+        <button onclick="loadFile()">Load Dataset</button>
+        <select id="plotType">
+            <option value="scatter">Scatter Plot</option>
+            <option value="histogram">Histogram</option>
+            <option value="box">Box Plot</option>
+            <option value="correlation">Correlation Matrix</option>
+        </select>
+        <button onclick="generatePlot()">Generate Plot</button>
+    </div>
+    <div class="viz-container">
+        <div id="plotDiv" style="width:100%;height:600px;"></div>
+    </div>
+
+    <script>
+        let dataset = null;
+
+        function loadFile() {
+            const input = document.getElementById('fileInput');
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                if (file.name.endsWith('.csv')) {
+                    dataset = parseCSV(content);
+                } else if (file.name.endsWith('.json')) {
+                    dataset = JSON.parse(content);
+                }
+                generatePlot();
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(content) {
+            const lines = content.split('\\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = {};
+
+            headers.forEach(header => data[header] = []);
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                headers.forEach((header, index) => {
+                    const value = values[index]?.trim();
+                    const numValue = parseFloat(value);
+                    data[header].push(isNaN(numValue) ? value : numValue);
+                });
+            }
+
+            return data;
+        }
+
+        function generatePlot() {
+            if (!dataset) return;
+
+            const plotType = document.getElementById('plotType').value;
+            const columns = Object.keys(dataset);
+            const numericColumns = columns.filter(col =>
+                typeof dataset[col][0] === 'number'
+            );
+
+            let plotData = [];
+
+            switch (plotType) {
+                case 'scatter':
+                    if (numericColumns.length >= 2) {
+                        plotData = [{
+                            x: dataset[numericColumns[0]],
+                            y: dataset[numericColumns[1]],
+                            mode: 'markers',
+                            type: 'scatter',
+                            name: numericColumns[1] + ' vs ' + numericColumns[0]
+                        }];
+                    }
+                    break;
+
+                case 'histogram':
+                    if (numericColumns.length >= 1) {
+                        plotData = [{
+                            x: dataset[numericColumns[0]],
+                            type: 'histogram',
+                            name: numericColumns[0]
+                        }];
+                    }
+                    break;
+
+                case 'box':
+                    plotData = numericColumns.slice(0, 5).map(col => ({
+                        y: dataset[col],
+                        type: 'box',
+                        name: col
+                    }));
+                    break;
+
+                case 'correlation':
+                    if (numericColumns.length >= 2) {
+                        const corrMatrix = calculateCorrelation(numericColumns);
+                        plotData = [{
+                            z: corrMatrix,
+                            x: numericColumns,
+                            y: numericColumns,
+                            type: 'heatmap',
+                            colorscale: 'RdBu'
+                        }];
+                    }
+                    break;
+            }
+
+            Plotly.newPlot('plotDiv', plotData, {
+                title: 'Dataset Visualization',
+                paper_bgcolor: '#252526',
+                plot_bgcolor: '#2d2d30',
+                font: { color: '#fff' }
+            });
+        }
+
+        function calculateCorrelation(columns) {
+            const matrix = [];
+            for (let i = 0; i < columns.length; i++) {
+                const row = [];
+                for (let j = 0; j < columns.length; j++) {
+                    row.push(pearsonCorrelation(dataset[columns[i]], dataset[columns[j]]));
+                }
+                matrix.push(row);
+            }
+            return matrix;
+        }
+
+        function pearsonCorrelation(x, y) {
+            const n = x.length;
+            const sumX = x.reduce((a, b) => a + b, 0);
+            const sumY = y.reduce((a, b) => a + b, 0);
+            const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+            const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+            const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
+
+            const numerator = n * sumXY - sumX * sumY;
+            const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+
+            return denominator === 0 ? 0 : numerator / denominator;
+        }
+    </script>
+</body>
+</html>`;
+
+        try {
+            const tempUri = URI.file('/tmp/dataset_visualizer.html');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(visualizerHtml));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('📊 Dataset Visualizer opened!');
+        } catch (error) {
+            notificationService.error('Failed to open visualizer: ' + error);
+        }
+    }
+}
+
+// Quick Model Builder
+class QuickModelBuilderAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.quickModelBuilder',
+            title: { value: '🏗️ Quick Model Builder', original: 'Quick Model Builder' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyM,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/quick_model_builder.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('🏗️ Quick Model Builder created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create model builder: ' + error);
+        }
+    }
+}
+
+// Additional ML-focused features
+class TensorShapeAnalyzerAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.tensorShapeAnalyzer',
+            title: { value: '📐 Tensor Shape Analyzer', original: 'Tensor Shape Analyzer' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyT,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const shapeAnalyzerCode = `
+# 📐 Tensor Shape Analyzer - VS Aware
+import torch
+import numpy as np
+from typing import Dict, List, Tuple, Any
+
+class TensorShapeAnalyzer:
+    """Smart tensor shape inference and debugging tool"""
+
+    def __init__(self):
+        self.shape_history = []
+        self.operations = []
+
+    def analyze_model(self, model, input_shape: Tuple):
+        """Trace through model and show shape transformations"""
+        print(f"🔍 Analyzing model with input shape: {input_shape}")
+
+        # Create dummy input
+        dummy_input = torch.randn(1, *input_shape)
+
+        # Hook to capture intermediate shapes
+        shapes = {}
+        def capture_shape(name):
+            def hook(module, input, output):
+                if isinstance(output, torch.Tensor):
+                    shapes[name] = output.shape
+                elif isinstance(output, (list, tuple)):
+                    shapes[name] = [o.shape if isinstance(o, torch.Tensor) else str(type(o)) for o in output]
+            return hook
+
+        # Register hooks
+        hooks = []
+        for name, module in model.named_modules():
+            if len(list(module.children())) == 0:  # leaf modules
+                hook = module.register_forward_hook(capture_shape(name))
+                hooks.append(hook)
+
+        # Forward pass
+        with torch.no_grad():
+            output = model(dummy_input)
+
+        # Remove hooks
+        for hook in hooks:
+            hook.remove()
+
+        # Print results
+        print("\n📊 Shape Transformations:")
+        print("-" * 50)
+        print(f"Input: {dummy_input.shape}")
+
+        for name, shape in shapes.items():
+            if name:  # skip empty names
+                print(f"{name}: {shape}")
+
+        print(f"Output: {output.shape}")
+        print("-" * 50)
+
+        return shapes
+
+    def suggest_fixes(self, error_msg: str) -> List[str]:
+        """Suggest fixes for common shape errors"""
+        suggestions = []
+
+        if "RuntimeError" in error_msg and "size mismatch" in error_msg:
+            suggestions.append("🔧 Check tensor dimensions - use .view() or .reshape() to fix shape")
+            suggestions.append("🔧 Verify batch dimension - ensure all tensors have same batch size")
+            suggestions.append("🔧 Add dimension with .unsqueeze() or remove with .squeeze()")
+
+        if "CUDA" in error_msg:
+            suggestions.append("🔧 Move tensors to same device: tensor.to('cuda') or tensor.to('cpu')")
+            suggestions.append("🔧 Check model and data are on same device")
+
+        if "expected" in error_msg and "but got" in error_msg:
+            suggestions.append("🔧 Reshape input tensor to match expected dimensions")
+            suggestions.append("🔧 Check if you need to transpose dimensions with .transpose() or .permute()")
+
+        return suggestions
+
+    def print_tensor_info(self, tensor, name="tensor"):
+        """Print comprehensive tensor information"""
+        print(f"\n📊 {name.upper()} INFO:")
+        print(f"Shape: {tensor.shape}")
+        print(f"Dtype: {tensor.dtype}")
+        print(f"Device: {tensor.device}")
+        print(f"Requires grad: {tensor.requires_grad}")
+        print(f"Memory usage: {tensor.numel() * tensor.element_size()} bytes")
+
+        if tensor.numel() > 0:
+            print(f"Min: {tensor.min().item():.4f}")
+            print(f"Max: {tensor.max().item():.4f}")
+            print(f"Mean: {tensor.mean().item():.4f}")
+            print(f"Std: {tensor.std().item():.4f}")
+
+# 🚀 Quick Usage Functions
+def quick_shape_check(tensor_or_model, input_shape=None):
+    """Quick shape analysis"""
+    analyzer = TensorShapeAnalyzer()
+
+    if isinstance(tensor_or_model, torch.Tensor):
+        analyzer.print_tensor_info(tensor_or_model)
+    elif hasattr(tensor_or_model, 'forward'):  # It's a model
+        if input_shape:
+            analyzer.analyze_model(tensor_or_model, input_shape)
+        else:
+            print("❌ Please provide input_shape for model analysis")
+    else:
+        print("❌ Please provide a tensor or model")
+
+def debug_shape_error(error_message):
+    """Get suggestions for shape errors"""
+    analyzer = TensorShapeAnalyzer()
+    suggestions = analyzer.suggest_fixes(str(error_message))
+
+    print("🔧 SHAPE ERROR DEBUG SUGGESTIONS:")
+    for i, suggestion in enumerate(suggestions, 1):
+        print(f"{i}. {suggestion}")
+
+# 📝 Common Shape Operations Cheat Sheet
+def shape_cheat_sheet():
+    """Print common tensor shape operations"""
+    print("""
+📐 TENSOR SHAPE OPERATIONS CHEAT SHEET
+
+🔄 Reshape Operations:
+  tensor.view(new_shape)           # Change shape (must preserve number of elements)
+  tensor.reshape(new_shape)        # More flexible reshaping
+  tensor.flatten()                 # Flatten to 1D
+  tensor.flatten(start_dim=1)      # Flatten from specific dimension
+
+📏 Dimension Operations:
+  tensor.unsqueeze(dim)            # Add dimension at position
+  tensor.squeeze()                 # Remove all dimensions of size 1
+  tensor.squeeze(dim)              # Remove specific dimension if size 1
+  tensor.transpose(dim0, dim1)     # Swap two dimensions
+  tensor.permute(dims)             # Rearrange dimensions
+
+🔗 Combine Tensors:
+  torch.cat([t1, t2], dim=0)       # Concatenate along dimension
+  torch.stack([t1, t2], dim=0)     # Stack tensors (adds new dimension)
+  torch.repeat_interleave(t, n)    # Repeat elements
+  tensor.repeat(sizes)             # Repeat entire tensor
+
+🎯 Common Patterns:
+  # Batch processing
+  tensor.unsqueeze(0)              # Add batch dimension
+
+  # CNN to Linear layer
+  x = x.view(x.size(0), -1)        # Flatten for dense layer
+
+  # RNN input: (seq_len, batch, features)
+  x = x.transpose(0, 1)            # Swap sequence and batch dims
+    """)
+
+# 🎯 Usage Examples:
+print("📐 Tensor Shape Analyzer loaded!")
+print("✅ Use quick_shape_check(tensor) for tensor info")
+print("✅ Use quick_shape_check(model, input_shape) for model analysis")
+print("✅ Use debug_shape_error(error_msg) for error suggestions")
+print("✅ Use shape_cheat_sheet() for quick reference")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/tensor_shape_analyzer.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(shapeAnalyzerCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('📐 Tensor Shape Analyzer created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create tensor shape analyzer: ' + error);
+        }
+    }
+}
+
+class ExperimentTrackerAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.experimentTracker',
+            title: { value: '📊 Experiment Tracker', original: 'Experiment Tracker' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyE,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/experiment_tracker.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('📊 Experiment Tracker created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create experiment tracker: ' + error);
+        }
+    }
+}
+
+class MLCodeQualityAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.mlCodeQualityChecker',
+            title: { value: '🔍 ML Code Quality Checker', original: 'ML Code Quality Checker' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyQ,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/ml_code_quality_checker.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('🔍 ML Code Quality Checker created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create ML code quality checker: ' + error);
+        }
+    }
+}
+
+class DataGeneratorAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.dataGenerator',
+            title: { value: '🎲 Data Generator', original: 'Data Generator' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyG,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/data_generator.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('🎲 Data Generator created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create data generator: ' + error);
+        }
+    }
+}
+
+class ModelComparatorAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.modelComparator',
+            title: { value: '🤔 Model Comparator', original: 'Model Comparator' },
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyC,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/model_comparator.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('🤔 Model Comparator created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create model comparator: ' + error);
+        }
+    }
+}
+
+class HyperparameterSuggestorAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.hyperparameterSuggestor',
+            title: '🎯 Hyperparameter Suggestor',
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyH,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/hyperparameter_suggestor.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('🎯 Hyperparameter Suggestor created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create hyperparameter suggestor: ' + error);
+        }
+    }
+}
+
+class MLDocumentationGeneratorAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.mlDocumentationGenerator',
+            title: '📝 ML Documentation Generator',
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyD,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/ml_documentation_generator.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('📝 ML Documentation Generator created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create ML documentation generator: ' + error);
+        }
+    }
+}
+
+class PipelineBuilderAction extends Action2 {
+    constructor() {
+        super({
+            id: 'vsaware.pipelineBuilder',
+            title: '🧠 Pipeline Builder',
+            category: 'Developer',
+            f1: true,
+            keybinding: {
+                weight: KeybindingWeight.WorkbenchContrib,
+                primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyB,
+                when: undefined
+            }
+        });
+    }
+
+    async run(accessor: ServicesAccessor): Promise<void> {
+        const editorService = accessor.get(IEditorService);
+        const notificationService = accessor.get(INotificationService);
+
+        const modelCode = `
+# 🏗️ Quick Model Builder - Generated by VS Aware
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+import matplotlib.pyplot as plt
+
+class QuickModel(nn.Module):
+    def __init__(self, input_size, hidden_sizes, output_size, dropout_rate=0.2):
+        super(QuickModel, self).__init__()
+
+        layers = []
+        prev_size = input_size
+
+        # Hidden layers
+        for hidden_size in hidden_sizes:
+            layers.append(nn.Linear(prev_size, hidden_size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_size = hidden_size
+
+        # Output layer
+        layers.append(nn.Linear(prev_size, output_size))
+
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.network(x)
+
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer):
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.train_losses = []
+        self.val_losses = []
+
+    def train_epoch(self, train_loader):
+        self.model.train()
+        total_loss = 0
+
+        for batch_x, batch_y in train_loader:
+            self.optimizer.zero_grad()
+            outputs = self.model(batch_x)
+            loss = self.criterion(outputs, batch_y)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(train_loader)
+
+    def validate(self, val_loader):
+        self.model.eval()
+        total_loss = 0
+
+        with torch.no_grad():
+            for batch_x, batch_y in val_loader:
+                outputs = self.model(batch_x)
+                loss = self.criterion(outputs, batch_y)
+                total_loss += loss.item()
+
+        return total_loss / len(val_loader)
+
+    def train(self, train_loader, val_loader, epochs):
+        for epoch in range(epochs):
+            train_loss = self.train_epoch(train_loader)
+            val_loss = self.validate(val_loader)
+
+            self.train_losses.append(train_loss)
+            self.val_losses.append(val_loss)
+
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+    def plot_losses(self):
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_losses, label='Train Loss')
+        plt.plot(self.val_losses, label='Validation Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.legend()
+        plt.title('Training Progress')
+        plt.show()
+
+# 🚀 Quick Setup Example
+def quick_classification_model(input_size, num_classes):
+    """Quick setup for classification"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[128, 64, 32],
+        output_size=num_classes,
+        dropout_rate=0.3
+    )
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+def quick_regression_model(input_size):
+    """Quick setup for regression"""
+    model = QuickModel(
+        input_size=input_size,
+        hidden_sizes=[64, 32],
+        output_size=1,
+        dropout_rate=0.2
+    )
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    return ModelTrainer(model, criterion, optimizer)
+
+# 📊 Data preparation helper
+def prepare_data(X, y, test_size=0.2, batch_size=32):
+    """Convert numpy arrays to PyTorch DataLoaders"""
+    # Convert to tensors
+    X_tensor = torch.FloatTensor(X)
+    y_tensor = torch.FloatTensor(y) if len(y.shape) == 1 else torch.LongTensor(y)
+
+    # Split data
+    split_idx = int(len(X) * (1 - test_size))
+
+    train_dataset = TensorDataset(X_tensor[:split_idx], y_tensor[:split_idx])
+    val_dataset = TensorDataset(X_tensor[split_idx:], y_tensor[split_idx:])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader
+
+# 🎯 Usage Example:
+"""
+# For classification:
+X, y = your_data_here  # X: features, y: labels
+train_loader, val_loader = prepare_data(X, y)
+trainer = quick_classification_model(input_size=X.shape[1], num_classes=len(np.unique(y)))
+trainer.train(train_loader, val_loader, epochs=100)
+trainer.plot_losses()
+
+# For regression:
+trainer = quick_regression_model(input_size=X.shape[1])
+trainer.train(train_loader, val_loader, epochs=100)
+"""
+
+print("🏗️ Quick Model Builder ready!")
+print("✅ Modify hidden_sizes, dropout_rate, and other parameters as needed")
+print("✅ Use quick_classification_model() or quick_regression_model()")
+print("✅ Call trainer.train() to start training")
+print("✅ Call trainer.plot_losses() to visualize progress")
+`;
+
+        try {
+            const tempUri = URI.file('/tmp/pipeline_builder.py');
+            const fileService = accessor.get(IFileService);
+            await fileService.writeFile(tempUri, VSBuffer.fromString(modelCode));
+            await editorService.openEditor({ resource: tempUri });
+            notificationService.info('🧠 Pipeline Builder created! Copy and customize as needed.');
+        } catch (error) {
+            notificationService.error('Failed to create pipeline builder: ' + error);
+        }
+    }
+}
+
+class VoidWorkbenchContribution extends Disposable implements IWorkbenchContribution {
+
+    constructor() {
+        super();
+        console.log('🚀 Void Workbench Contribution initialized with ML features!');
+    }
+}
+
+// Register all ML actions
+registerAction2(ConvertPythonToNotebookAction);
+registerAction2(NeuralNetworkPlaygroundAction);
+registerAction2(DatasetVisualizerAction);
+registerAction2(QuickModelBuilderAction);
+
+// Additional ML-focused features
+registerAction2(TensorShapeAnalyzerAction);
+registerAction2(ExperimentTrackerAction);
+registerAction2(MLCodeQualityAction);
+registerAction2(DataGeneratorAction);
+registerAction2(ModelComparatorAction);
+registerAction2(HyperparameterSuggestorAction);
+registerAction2(MLDocumentationGeneratorAction);
+registerAction2(PipelineBuilderAction);
+
+Registry.as<IWorkbenchContributionsRegistry>(WorkbenchExtensions.Workbench).registerWorkbenchContribution(VoidWorkbenchContribution, LifecyclePhase.Restored);
