@@ -48,8 +48,8 @@ function code() {
 		DISABLE_EXTENSIONS=""
 	fi
 
-	# Launch Code with ML Engineer Tools extension and disabled extensions to avoid policy service issues
-	exec "$CODE" . $DISABLE_EXTENSIONS --extensionDevelopmentPath="$ROOT/extensions/ml-engineer-tools" "$@"
+	# Launch Code without ML Engineer Tools extension temporarily
+	exec "$CODE" . $DISABLE_EXTENSIONS "$@"
 }
 
 function code-wsl()

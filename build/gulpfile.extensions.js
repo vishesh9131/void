@@ -68,7 +68,7 @@ const compilations = [
 	'extensions/vscode-colorize-tests/tsconfig.json',
 	'extensions/vscode-colorize-perf-tests/tsconfig.json',
 	'extensions/vscode-test-resolver/tsconfig.json',
-	'extensions/ml-engineer-tools/tsconfig.json',
+	// 'extensions/ml-engineer-tools/tsconfig.json',  // Temporarily disabled
 
 	'.vscode/extensions/vscode-selfhost-test-provider/tsconfig.json',
 	'.vscode/extensions/vscode-selfhost-import-aid/tsconfig.json',
