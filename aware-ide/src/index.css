@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply h-full w-full overflow-hidden bg-aware-bg text-aware-text;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    @apply bg-aware-accent/30 text-aware-text;
+  }
+
+  /* Thin dark scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #2a2a2a transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #2a2a2a;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #3a3a3a;
+  }
+}
+
+@layer components {
+  /* React Flow dark overrides */
+  .react-flow__attribution {
+    display: none !important;
+  }
+
+  .react-flow__pane {
+    cursor: grab;
+  }
+
+  .react-flow__pane:active {
+    cursor: grabbing;
+  }
+
+  .react-flow__edge-path {
+    stroke: #3a3a3a;
+    stroke-width: 1.5;
+  }
+
+  .react-flow__edge.selected .react-flow__edge-path,
+  .react-flow__edge:hover .react-flow__edge-path {
+    stroke: #6366f1;
+  }
+
+  .react-flow__handle {
+    width: 8px;
+    height: 8px;
+    background: #3a3a3a;
+    border: 2px solid #1a1a1a;
+  }
+
+  .react-flow__handle:hover {
+    background: #6366f1;
+  }
+
+  /* Monaco editor container */
+  .monaco-editor,
+  .monaco-editor .overflow-guard {
+    border-radius: 0 !important;
+  }
+
+  .monaco-editor .margin {
+    background-color: #0d0d0d !important;
+  }
+}
+
+@layer utilities {
+  /* Loading pulse animation */
+  @keyframes loading-shimmer {
+    0% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.5;
+    }
+  }
+
+  .animate-loading {
+    animation: loading-shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Dot pulse for processing indicators */
+  @keyframes dot-pulse {
+    0%,
+    80%,
+    100% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-dot-1 {
+    animation: dot-pulse 1.4s ease-in-out infinite;
+    animation-delay: 0s;
+  }
+
+  .animate-dot-2 {
+    animation: dot-pulse 1.4s ease-in-out infinite;
+    animation-delay: 0.2s;
+  }
+
+  .animate-dot-3 {
+    animation: dot-pulse 1.4s ease-in-out infinite;
+    animation-delay: 0.4s;
+  }
+}
