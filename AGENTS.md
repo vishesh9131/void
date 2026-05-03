@@ -53,3 +53,12 @@ For headless Electron: install `xvfb` and run via `xvfb-run`.
 - The `postinstall` script downloads the Electron binary; this can be slow on first run.
 - The chrome-sandbox may need permissions fix: `sudo chown root:root .build/electron/chrome-sandbox && sudo chmod 4755 .build/electron/chrome-sandbox`
 - If you see "Cannot find module '../react/out/..." errors, run `npm run buildreact` before `npm run compile`.
+
+### Aware IDE sub-project
+
+The `aware-ide/` directory is a standalone Vite + React + Electron app with its own `package.json`. It uses npm as its package manager (see `package-lock.json`). Install deps with `cd aware-ide && npm install`. Key commands:
+
+- **Dev server**: `npm run dev` (Vite on port 5173)
+- **Lint**: `npm run lint` (ESLint; the root ESLint config has a pre-existing ts-node error, so the aware-ide lint script may inherit that)
+- **Type check**: `npx tsc --noEmit` (pre-existing TS6306/TS6310 errors from tsconfig.node.json reference are benign)
+- **LLM service layer**: `src/services/llm/` -- providers for Anthropic, OpenAI, and vLLM (OpenAI-compatible via `https://vllm.corerec.online/v1`)
