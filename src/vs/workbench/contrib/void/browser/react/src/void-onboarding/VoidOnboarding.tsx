@@ -12,12 +12,15 @@ import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
 import { isLinux } from '../../../../../../../base/common/platform.js';
 
+// Flip to true locally to force the overlay open (handy for QA / screenshots).
+// MUST be left false in committed code.
 const OVERRIDE_VALUE = false
 
 export const VoidOnboarding = () => {
 
 	const voidSettingsState = useSettingsState()
-	const isOnboardingComplete = voidSettingsState.globalSettings.isOnboardingComplete || OVERRIDE_VALUE
+	// OVERRIDE_VALUE forces the overlay open when set true (used for QA + screenshots).
+	const isOnboardingComplete = OVERRIDE_VALUE ? false : voidSettingsState.globalSettings.isOnboardingComplete
 
 	const isDark = useIsDark()
 
