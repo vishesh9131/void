@@ -39,70 +39,76 @@ export enum ThemeSettings {
 }
 
 export enum ThemeSettingDefaults {
-	COLOR_THEME_DARK = 'Default Dark+', // Void changed this from 'Default Dark Modern'
-	COLOR_THEME_LIGHT = 'Default Light Modern',
+	// Default to the Apple-flavoured Aware themes; the older Default Dark+
+	// values are kept around as the "_OLD" entries so existing migration code
+	// keeps working.
+	COLOR_THEME_DARK = 'Aware Dark',
+	COLOR_THEME_LIGHT = 'Aware Light',
 	COLOR_THEME_HC_DARK = 'Default High Contrast',
 	COLOR_THEME_HC_LIGHT = 'Default High Contrast Light',
 
-	COLOR_THEME_DARK_OLD = 'Default Dark Modern', // Void changed this from 'Default Dark+'
+	COLOR_THEME_DARK_OLD = 'Default Dark+',
 	COLOR_THEME_LIGHT_OLD = 'Default Light+',
 
 	FILE_ICON_THEME = 'vs-seti',
 	PRODUCT_ICON_THEME = 'Default',
 }
 
-export const COLOR_THEME_DARK_INITIAL_COLORS = { // Void changed this to match dark+
-	'activityBar.activeBorder': '#ffffff',
-	'activityBar.background': '#333333',
-	'activityBar.border': '#454545',
-	'activityBar.foreground': '#ffffff',
-	'activityBar.inactiveForeground': '#ffffff66',
-	'editorGroup.border': '#444444',
-	'editorGroupHeader.tabsBackground': '#252526',
-	'editorGroupHeader.tabsBorder': '#252526',
-	'statusBar.background': '#007ACC',
-	'statusBar.border': '#454545',
-	'statusBar.foreground': '#ffffff',
-	'statusBar.noFolderBackground': '#68217A',
-	'tab.activeBackground': '#2D2D2D',
-	'tab.activeBorder': '#ffffff',
-	'tab.activeBorderTop': '#007ACC',
-	'tab.activeForeground': '#ffffff',
-	'tab.border': '#252526',
-	'textLink.foreground': '#3794ff',
-	'titleBar.activeBackground': '#3C3C3C',
-	'titleBar.activeForeground': '#CCCCCC',
-	'titleBar.border': '#454545',
-	'titleBar.inactiveBackground': '#2C2C2C',
-	'titleBar.inactiveForeground': '#999999',
-	'welcomePage.tileBackground': '#252526'
+// Initial colors used during the first paint (before the actual theme JSON
+// finishes loading). Kept in sync with the Aware Dark / Aware Light themes
+// so we don't get a jarring flash.
+export const COLOR_THEME_DARK_INITIAL_COLORS = {
+	'activityBar.activeBorder': '#0A84FF00',
+	'activityBar.background': '#161618',
+	'activityBar.border': '#00000000',
+	'activityBar.foreground': '#E5E5E7',
+	'activityBar.inactiveForeground': '#6E6E73',
+	'editorGroup.border': '#00000000',
+	'editorGroupHeader.tabsBackground': '#1C1C1E',
+	'editorGroupHeader.tabsBorder': '#00000000',
+	'statusBar.background': '#161618',
+	'statusBar.border': '#00000000',
+	'statusBar.foreground': '#98989D',
+	'statusBar.noFolderBackground': '#161618',
+	'tab.activeBackground': '#28282B',
+	'tab.activeBorder': '#28282B',
+	'tab.activeBorderTop': '#0A84FF00',
+	'tab.activeForeground': '#FFFFFF',
+	'tab.border': '#00000000',
+	'textLink.foreground': '#0A84FF',
+	'titleBar.activeBackground': '#161618',
+	'titleBar.activeForeground': '#E5E5E7',
+	'titleBar.border': '#00000000',
+	'titleBar.inactiveBackground': '#161618',
+	'titleBar.inactiveForeground': '#98989D',
+	'welcomePage.tileBackground': '#252528'
 };
 
 export const COLOR_THEME_LIGHT_INITIAL_COLORS = {
-	'activityBar.activeBorder': '#005FB8',
-	'activityBar.background': '#f8f8f8',
-	'activityBar.border': '#e5e5e5',
-	'activityBar.foreground': '#1f1f1f',
-	'activityBar.inactiveForeground': '#616161',
-	'editorGroup.border': '#e5e5e5',
-	'editorGroupHeader.tabsBackground': '#f8f8f8',
-	'editorGroupHeader.tabsBorder': '#e5e5e5',
-	'statusBar.background': '#f8f8f8',
-	'statusBar.border': '#e5e5e5',
-	'statusBar.foreground': '#3b3b3b',
-	'statusBar.noFolderBackground': '#f8f8f8',
-	'tab.activeBackground': '#ffffff',
-	'tab.activeBorder': '#f8f8f8',
-	'tab.activeBorderTop': '#005fb8',
-	'tab.activeForeground': '#3b3b3b',
-	'tab.border': '#e5e5e5',
-	'textLink.foreground': '#005fb8',
-	'titleBar.activeBackground': '#f8f8f8',
-	'titleBar.activeForeground': '#1e1e1e',
-	'titleBar.border': '#E5E5E5',
-	'titleBar.inactiveBackground': '#f8f8f8',
-	'titleBar.inactiveForeground': '#8b949e',
-	'welcomePage.tileBackground': '#f3f3f3'
+	'activityBar.activeBorder': '#007AFF00',
+	'activityBar.background': '#F2F2F4',
+	'activityBar.border': '#00000000',
+	'activityBar.foreground': '#1D1D1F',
+	'activityBar.inactiveForeground': '#A1A1A6',
+	'editorGroup.border': '#00000000',
+	'editorGroupHeader.tabsBackground': '#F5F5F7',
+	'editorGroupHeader.tabsBorder': '#00000000',
+	'statusBar.background': '#F2F2F4',
+	'statusBar.border': '#00000000',
+	'statusBar.foreground': '#3A3A3C',
+	'statusBar.noFolderBackground': '#F2F2F4',
+	'tab.activeBackground': '#FBFBFD',
+	'tab.activeBorder': '#FBFBFD',
+	'tab.activeBorderTop': '#007AFF00',
+	'tab.activeForeground': '#1D1D1F',
+	'tab.border': '#00000000',
+	'textLink.foreground': '#007AFF',
+	'titleBar.activeBackground': '#F2F2F4',
+	'titleBar.activeForeground': '#1D1D1F',
+	'titleBar.border': '#00000000',
+	'titleBar.inactiveBackground': '#F2F2F4',
+	'titleBar.inactiveForeground': '#6E6E73',
+	'welcomePage.tileBackground': '#FFFFFF'
 };
 
 export interface IWorkbenchTheme {
