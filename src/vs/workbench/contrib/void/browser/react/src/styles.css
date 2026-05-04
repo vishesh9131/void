@@ -135,23 +135,30 @@
 	color: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground));
 }
 
-/* Buttons styled exactly like other workbench dialogs - drives onboarding too. */
+/* Buttons styled exactly like other workbench dialogs - drives onboarding too.
+   Slightly more rounded + a tiny press transform so it reads as a native macOS
+   control instead of a flat web pill. */
 .void-btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
-	padding: 6px 14px;
-	min-height: 26px;
-	font-family: var(--vscode-font-family, inherit);
+	padding: 7px 16px;
+	min-height: 28px;
+	font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif);
 	font-size: 13px;
+	font-weight: 500;
+	letter-spacing: -0.005em;
 	line-height: 18px;
 	border: 1px solid transparent;
-	border-radius: 2px;
+	border-radius: 7px;
 	cursor: pointer;
-	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
 	color: var(--void-accent-fg);
 	background: var(--void-accent);
+}
+.void-btn:active:not(:disabled) {
+	transform: translateY(0.5px);
 }
 .void-btn:hover:not(:disabled) {
 	background: var(--void-accent-hover);
@@ -193,7 +200,7 @@
 	color: var(--vscode-foreground);
 	background: var(--vscode-editorWidget-background, var(--void-bg-2-hover));
 	border: 1px solid var(--vscode-widget-border, transparent);
-	border-radius: 12px;
+	border-radius: 999px;
 	cursor: pointer;
 	transition: background-color 120ms ease, border-color 120ms ease;
 }
@@ -207,12 +214,12 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 6px 12px;
+	padding: 7px 12px;
 	font-size: 13px;
 	color: var(--vscode-foreground);
 	background: transparent;
 	border: 1px solid transparent;
-	border-radius: 4px;
+	border-radius: 7px;
 	cursor: pointer;
 	text-align: left;
 }
