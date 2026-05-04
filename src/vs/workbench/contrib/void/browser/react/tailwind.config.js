@@ -74,6 +74,17 @@ module.exports = {
 				'void-ring-color': 'var(--void-ring-color)',
 				'void-link-color': 'var(--void-link-color)',
 
+				// theme-aware accent. Replaces the old hardcoded #0e70c0 brand blue.
+				'void-accent': 'var(--void-accent)',
+				'void-accent-fg': 'var(--void-accent-fg)',
+				'void-accent-hover': 'var(--void-accent-hover)',
+				'void-accent-muted': 'var(--void-accent-muted)',
+				'void-secondary-bg': 'var(--void-secondary-bg)',
+				'void-secondary-fg': 'var(--void-secondary-fg)',
+				'void-secondary-hover': 'var(--void-secondary-hover)',
+				'void-success': 'var(--void-success)',
+				'void-danger': 'var(--void-danger)',
+
 				vscode: {
 					// see: https://code.visualstudio.com/api/extension-guides/webview#theming-webview-content
 
@@ -187,6 +198,14 @@ module.exports = {
 
 					'charts-orange': 'var(--vscode-charts-orange)',
 					'charts-yellow': 'var(--vscode-charts-yellow)',
+
+					// list rows + toolbar — used so non-button surfaces also
+					// feel like the rest of the workbench.
+					'list-hover-bg': 'var(--vscode-list-hoverBackground)',
+					'list-hover-fg': 'var(--vscode-list-hoverForeground)',
+					'list-active-bg': 'var(--vscode-list-activeSelectionBackground)',
+					'list-active-fg': 'var(--vscode-list-activeSelectionForeground)',
+					'toolbar-hover-fg': 'var(--vscode-toolbar-hoverForeground)',
 				},
 			},
 		},
