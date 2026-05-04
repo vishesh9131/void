@@ -104,39 +104,38 @@ class SidebarViewPane extends ViewPane {
 export const VOID_VIEW_CONTAINER_ID = 'workbench.view.void'
 export const VOID_VIEW_ID = VOID_VIEW_CONTAINER_ID
 
-// Register view container
+// Register view container.
+// The AuxiliaryBar is still the default home (matches the "Ctrl+L" muscle
+// memory), but we no longer reject added views and the pane itself can be
+// moved/dragged/docked anywhere — primary sidebar, panel, or back to aux —
+// just like the built-in Explorer / Source Control sections.
 const viewContainerRegistry = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.ViewContainersRegistry);
 const container = viewContainerRegistry.registerViewContainer({
 	id: VOID_VIEW_CONTAINER_ID,
-	title: nls.localize2('voidContainer', 'Chat'), // this is used to say "Void" (Ctrl + L)
+	title: nls.localize2('voidContainer', 'Chat'),
 	ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [VOID_VIEW_CONTAINER_ID, {
 		mergeViewWithContainerWhenSingleView: true,
 		orientation: Orientation.HORIZONTAL,
 	}]),
 	hideIfEmpty: false,
 	order: 1,
-
-	rejectAddedViews: true,
-	icon: Codicon.symbolMethod,
-
-
+	icon: Codicon.commentDiscussion, // matches the rest of the chat-style icons in vscode
 }, ViewContainerLocation.AuxiliaryBar, { doNotRegisterOpenCommand: true, isDefault: true });
 
 
 
-// Register search default location to the container (sidebar)
+// Register the chat view inside the container. canMoveView: true is what makes
+// it behave like a regular dockview pane (drag the section header to relocate).
 const viewsRegistry = Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry);
 viewsRegistry.registerViews([{
 	id: VOID_VIEW_ID,
-	hideByDefault: false, // start open
-	// containerIcon: voidViewIcon,
-	name: nls.localize2('voidChat', ''), // this says ... : CHAT
+	hideByDefault: false,
+	name: nls.localize2('voidChat', 'Chat'),
 	ctorDescriptor: new SyncDescriptor(SidebarViewPane),
 	canToggleVisibility: false,
-	canMoveView: false, // can't move this out of its container
+	canMoveView: true,
 	weight: 80,
 	order: 1,
-	// singleViewPaneContainerTitle: 'hi',
 
 	// openCommandActionDescriptor: {
 	// 	id: VOID_VIEW_CONTAINER_ID,

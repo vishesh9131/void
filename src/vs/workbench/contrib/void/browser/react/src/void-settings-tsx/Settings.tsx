@@ -137,7 +137,7 @@ export const AnimatedCheckmarkButton = ({ text, className }: { text?: string, cl
 
 	return <div
 		className={`flex items-center gap-1.5 w-fit
-			${className ? className : `px-2 py-0.5 text-xs text-zinc-900 bg-zinc-100 rounded-sm`}
+			${className ? className : `px-2 py-0.5 text-xs text-void-accent-fg bg-void-accent rounded-sm`}
 		`}
 	>
 		<svg className="size-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -162,7 +162,7 @@ const AddButton = ({ disabled, text = 'Add', ...props }: { disabled?: boolean, t
 
 	return <button
 		disabled={disabled}
-		className={`bg-[#0e70c0] px-3 py-1 text-white rounded-sm ${!disabled ? 'hover:bg-[#1177cb] cursor-pointer' : 'opacity-50 cursor-not-allowed bg-opacity-70'}`}
+		className={`bg-void-accent px-3 py-1 text-void-accent-fg rounded-sm ${!disabled ? 'hover:bg-void-accent-hover cursor-pointer' : 'opacity-50 cursor-not-allowed bg-opacity-70'}`}
 		{...props}
 	>{text}</button>
 
@@ -287,7 +287,9 @@ const SimpleModelSettingsDialog = ({
 
 	return (
 		<div // Backdrop
-			className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999999]"
+			// using widget shadow alpha so the backdrop matches whatever theme is active
+			className="fixed inset-0 flex items-center justify-center z-[9999999]"
+			style={{ backgroundColor: 'color-mix(in srgb, var(--vscode-widget-shadow, #000) 60%, transparent)' }}
 			onMouseDown={() => {
 				mouseDownInsideModal.current = false;
 			}}
@@ -358,7 +360,7 @@ const SimpleModelSettingsDialog = ({
 					</VoidButtonBgDarken>
 					<VoidButtonBgDarken
 						onClick={onSave}
-						className="px-3 py-1 bg-[#0e70c0] text-white"
+						className="px-3 py-1 bg-void-accent text-void-accent-fg hover:bg-void-accent-hover"
 					>
 						Save
 					</VoidButtonBgDarken>
@@ -454,15 +456,15 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 
 
 			const detailAboutModel = type === 'autodetected' ?
-				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
+				<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-void-accent" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Detected locally' />
 				: type === 'custom' ?
-					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-[#0e70c0]" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
+					<Asterisk size={14} className="inline-block align-text-top brightness-115 stroke-[2] text-void-accent" data-tooltip-id='void-tooltip' data-tooltip-place='right' data-tooltip-content='Custom model' />
 					: undefined
 
 			const hasOverrides = !!settingsState.overridesOfModel?.[providerName]?.[modelName]
 
 			return <div key={`${modelName}${providerName}`}
-				className={`flex items-center justify-between gap-4 hover:bg-black/10 dark:hover:bg-gray-300/10 py-1 px-3 rounded-sm overflow-hidden cursor-default truncate group
+				className={`flex items-center justify-between gap-4 hover:bg-vscode-list-hover-bg py-1 px-3 rounded-sm overflow-hidden cursor-default truncate group
 				`}
 			>
 				{/* left part is width:full */}
@@ -524,7 +526,7 @@ export const ModelDump = ({ filteredProviders }: { filteredProviders?: ProviderN
 		{/* Add Model Section */}
 		{showCheckmark ? (
 			<div className="mt-4">
-				<AnimatedCheckmarkButton text='Added' className="bg-[#0e70c0] text-white px-3 py-1 rounded-sm" />
+				<AnimatedCheckmarkButton text='Added' className="bg-void-accent text-void-accent-fg px-3 py-1 rounded-sm" />
 			</div>
 		) : isAddModelOpen ? (
 			<div className="mt-4">
@@ -1142,10 +1144,10 @@ export const Settings = () => {
 									}
 								}}
 								className={`
-          py-2 px-4 rounded-md text-left transition-all duration-200
+          py-2 px-4 rounded-md text-left transition-colors duration-150
           ${selectedSection === tab
-										? 'bg-[#0e70c0]/80 text-white font-medium shadow-sm'
-										: 'bg-void-bg-2 hover:bg-void-bg-2/80 text-void-fg-1'}
+										? 'bg-vscode-list-active-bg text-vscode-list-active-fg font-medium'
+										: 'bg-transparent hover:bg-vscode-list-hover-bg text-void-fg-1'}
         `}
 							>
 								{label}

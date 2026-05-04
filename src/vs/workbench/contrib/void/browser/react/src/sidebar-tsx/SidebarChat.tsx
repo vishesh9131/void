@@ -70,7 +70,7 @@ const IconArrowUp = ({ size, className = '' }: { size: number, className?: strin
 			xmlns="http://www.w3.org/2000/svg"
 		>
 			<path
-				fill="black"
+				fill="currentColor"
 				fillRule="evenodd"
 				clipRule="evenodd"
 				d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z"
@@ -84,8 +84,8 @@ const IconSquare = ({ size, className = '' }: { size: number, className?: string
 	return (
 		<svg
 			className={className}
-			stroke="black"
-			fill="black"
+			stroke="currentColor"
+			fill="currentColor"
 			strokeWidth="0"
 			viewBox="0 0 24 24"
 			width={size}
@@ -422,7 +422,7 @@ export const ButtonSubmit = ({ className, disabled, ...props }: ButtonProps & Re
 	return <button
 		type='button'
 		className={`rounded-full flex-shrink-0 flex-grow-0 flex items-center justify-center
-			${disabled ? 'bg-vscode-disabled-fg cursor-default' : 'bg-white cursor-pointer'}
+			${disabled ? 'bg-vscode-disabled-fg cursor-default text-vscode-button-fg' : 'bg-void-accent text-void-accent-fg hover:bg-void-accent-hover cursor-pointer'}
 			${className}
 		`}
 		// data-tooltip-id='void-tooltip'
@@ -437,7 +437,7 @@ export const ButtonSubmit = ({ className, disabled, ...props }: ButtonProps & Re
 export const ButtonStop = ({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => {
 	return <button
 		className={`rounded-full flex-shrink-0 flex-grow-0 cursor-pointer flex items-center justify-center
-			bg-white
+			bg-void-accent text-void-accent-fg hover:bg-void-accent-hover
 			${className}
 		`}
 		type='button'
@@ -3093,7 +3093,7 @@ export const SidebarChat = () => {
 	const isLandingPage = previousMessages.length === 0
 
 
-	const initiallySuggestedPromptsHTML = <div className='flex flex-col gap-2 w-full text-nowrap text-void-fg-3 select-none'>
+	const initiallySuggestedPromptsHTML = <div className='flex flex-col gap-1 w-full text-nowrap select-none'>
 		{[
 			'Summarize my codebase',
 			'How do types work in Rust?',
@@ -3101,7 +3101,7 @@ export const SidebarChat = () => {
 		].map((text, index) => (
 			<div
 				key={index}
-				className='py-1 px-2 rounded text-sm bg-zinc-700/5 hover:bg-zinc-700/10 dark:bg-zinc-300/5 dark:hover:bg-zinc-300/10 cursor-pointer opacity-80 hover:opacity-100'
+				className='void-list-row text-sm'
 				onClick={() => onSubmit(text)}
 			>
 				{text}
@@ -3126,23 +3126,33 @@ export const SidebarChat = () => {
 		</div>
 	</div>
 
+	// Landing page: behave like a real workbench section. The chat input sits
+	// on top, the section below switches between recent threads and a small
+	// suggestion list using the same "uppercase mini-header" style used by
+	// Explorer / Source Control etc.
 	const landingPageContent = <div
 		ref={sidebarRef}
-		className='w-full h-full max-h-full flex flex-col overflow-auto px-4'
+		className='w-full h-full max-h-full flex flex-col overflow-auto'
 	>
-		<ErrorBoundary>
-			{landingPageInput}
-		</ErrorBoundary>
-
-		{Object.keys(chatThreadsState.allThreads).length > 1 ? // show if there are threads
+		<div className='px-3 pt-2'>
 			<ErrorBoundary>
-				<div className='pt-8 mb-2 text-void-fg-3 text-root select-none pointer-events-none'>Previous Threads</div>
-				<PastThreadsList />
+				{landingPageInput}
+			</ErrorBoundary>
+		</div>
+
+		{Object.keys(chatThreadsState.allThreads).length > 1 ?
+			<ErrorBoundary>
+				<div className='void-pane-section-header mt-4'>Recent Threads</div>
+				<div className='px-2 pb-2'>
+					<PastThreadsList />
+				</div>
 			</ErrorBoundary>
 			:
 			<ErrorBoundary>
-				<div className='pt-8 mb-2 text-void-fg-3 text-root select-none pointer-events-none'>Suggestions</div>
-				{initiallySuggestedPromptsHTML}
+				<div className='void-pane-section-header mt-4'>Suggestions</div>
+				<div className='px-2 pb-2'>
+					{initiallySuggestedPromptsHTML}
+				</div>
 			</ErrorBoundary>
 		}
 	</div>
