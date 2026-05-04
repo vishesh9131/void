@@ -14,6 +14,18 @@
   "contributes": {
     "themes": [
       {
+        "id": "Aware Dark",
+        "label": "%awareDarkThemeLabel%",
+        "uiTheme": "vs-dark",
+        "path": "./themes/aware_dark.json"
+      },
+      {
+        "id": "Aware Light",
+        "label": "%awareLightThemeLabel%",
+        "uiTheme": "vs",
+        "path": "./themes/aware_light.json"
+      },
+      {
         "id": "Default Dark+",
         "label": "%darkPlusColorThemeLabel%",
         "uiTheme": "vs-dark",
