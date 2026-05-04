@@ -5,20 +5,22 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useAccessor, useIsDark, useSettingsState } from '../util/services.js';
-import { Brain, Check, ChevronRight, DollarSign, ExternalLink, Lock, X } from 'lucide-react';
-import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, featureNames, FeatureName, isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js';
-import { ChatMarkdownRender } from '../markdown/ChatMarkdownRender.js';
+import { Check, ChevronRight, ExternalLink, MessageSquare, ShieldCheck, Sparkles } from 'lucide-react';
+import { displayInfoOfProviderName, ProviderName, providerNames, localProviderNames, FeatureName, isFeatureNameDisabled } from '../../../../common/voidSettingsTypes.js';
 import { OllamaSetupInstructions, OneClickSwitchButton, SettingsForProvider, ModelDump } from '../void-settings-tsx/Settings.js';
 import { ColorScheme } from '../../../../../../../platform/theme/common/theme.js';
 import ErrorBoundary from '../sidebar-tsx/ErrorBoundary.js';
 import { isLinux } from '../../../../../../../base/common/platform.js';
 
+// Flip to true locally to force the overlay open (handy for QA / screenshots).
+// MUST be left false in committed code.
 const OVERRIDE_VALUE = false
 
 export const VoidOnboarding = () => {
 
 	const voidSettingsState = useSettingsState()
-	const isOnboardingComplete = voidSettingsState.globalSettings.isOnboardingComplete || OVERRIDE_VALUE
+	// OVERRIDE_VALUE forces the overlay open when set true (used for QA + screenshots).
+	const isOnboardingComplete = OVERRIDE_VALUE ? false : voidSettingsState.globalSettings.isOnboardingComplete
 
 	const isDark = useIsDark()
 
@@ -157,13 +159,10 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 				{[...tabNames, 'Cloud/Other'].map(tab => (
 					<button
 						key={tab}
-						className={`py-2 px-4 rounded-md text-left ${currentTab === tab
-							? 'bg-[#0e70c0]/80 text-white font-medium shadow-sm'
-							: 'bg-void-bg-2 hover:bg-void-bg-2/80 text-void-fg-1'
-							} transition-all duration-200`}
+						className={`void-tab ${currentTab === tab ? 'is-active' : ''}`}
 						onClick={() => {
 							setCurrentTab(tab as TabName);
-							setErrorMessage(null); // Reset error message when changing tabs
+							setErrorMessage(null);
 						}}
 					>
 						{tab}
@@ -178,11 +177,10 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 					return (
 						<div key={featureName} className="flex items-center gap-2">
 							{hasModel ? (
-								<Check className="w-4 h-4 text-emerald-500" />
+								<Check className="w-4 h-4 text-void-success" />
 							) : (
-								<div className="w-3 h-3 rounded-full flex items-center justify-center">
-									<div className="w-1 h-1 rounded-full bg-white/70"></div>
-								</div>
+								// using a hollow ring so it reads as "pending" rather than disabled
+								<div className="w-3 h-3 rounded-full border border-void-fg-3 opacity-60" />
 							)}
 							<span>{display}</span>
 						</div>
@@ -209,7 +207,7 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 								data-tooltip-id="void-tooltip-provider-info"
 								data-tooltip-content="Gemini 2.5 Pro offers 25 free messages a day, and Gemini 2.5 Flash offers 500. We recommend using models down the line as you run out of free credits."
 								data-tooltip-place="right"
-								className="ml-1 text-xs align-top text-blue-400"
+								className="ml-1 text-xs align-top text-void-accent"
 							>*</span>
 						)}
 						{providerName === 'openRouter' && (
@@ -217,7 +215,7 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 								data-tooltip-id="void-tooltip-provider-info"
 								data-tooltip-content="OpenRouter offers 50 free messages a day, and 1000 if you deposit $10. Only applies to models labeled ':free'."
 								data-tooltip-place="right"
-								className="ml-1 text-xs align-top text-blue-400"
+								className="ml-1 text-xs align-top text-void-accent"
 							>*</span>
 						)}
 					</div>
@@ -249,7 +247,7 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 			{/* Navigation buttons in right column */}
 			<div className="flex flex-col items-end w-full mt-auto pt-8">
 				{errorMessage && (
-					<div className="text-amber-400 mb-2 text-sm opacity-80 transition-opacity duration-300">{errorMessage}</div>
+					<div className="text-void-warning mb-2 text-sm opacity-80 transition-opacity duration-300">{errorMessage}</div>
 				)}
 				<div className="flex items-center gap-2">
 					<PreviousButton onClick={() => setPageIndex(pageIndex - 1)} />
@@ -314,22 +312,17 @@ const AddProvidersPage = ({ pageIndex, setPageIndex }: { pageIndex: number, setP
 // 		prev/next
 
 const NextButton = ({ onClick, ...props }: { onClick: () => void } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
-
-	// Create a new props object without the disabled attribute
 	const { disabled, ...buttonProps } = props;
 
 	return (
 		<button
 			onClick={disabled ? undefined : onClick}
 			onDoubleClick={onClick}
-			className={`px-6 py-2 bg-zinc-100 ${disabled
-				? 'bg-zinc-100/40 cursor-not-allowed'
-				: 'hover:bg-zinc-100'
-				} rounded text-black duration-600 transition-all
-			`}
+			disabled={!!disabled}
+			className={`void-btn px-6 py-2 ${disabled ? '' : ''}`.trim()}
 			{...disabled && {
 				'data-tooltip-id': 'void-tooltip',
-				"data-tooltip-content": 'Please enter all required fields or choose another provider', // (double-click to proceed anyway, can come back in Settings)
+				"data-tooltip-content": 'Please enter all required fields or choose another provider',
 				"data-tooltip-place": 'top',
 			}}
 			{...buttonProps}
@@ -343,7 +336,7 @@ const PreviousButton = ({ onClick, ...props }: { onClick: () => void } & React.B
 	return (
 		<button
 			onClick={onClick}
-			className="px-6 py-2 rounded text-void-fg-3 opacity-80 hover:brightness-115 duration-600 transition-all"
+			className="void-btn void-btn--ghost px-6 py-2"
 			{...props}
 		>
 			Back
@@ -384,12 +377,12 @@ const OllamaDownloadOrRemoveModelButton = ({ modelName, isModelInstalled, sizeGb
 
 
 const YesNoText = ({ val }: { val: boolean | null }) => {
-
+	// keep this purely token-based so it works in any VS Code theme
 	return <div
 		className={
-			val === true ? "text text-emerald-500"
-				: val === false ? 'text-rose-600'
-					: "text text-amber-300"
+			val === true ? "text-void-success"
+				: val === false ? 'text-void-danger'
+					: "text-void-warning"
 		}
 	>
 		{
@@ -420,45 +413,29 @@ const abbreviateNumber = (num: number): string => {
 
 
 
+/*
+ * Primary CTA used across the welcome flow. The old version baked in a
+ * black/white pill (which clashed with light themes and felt very brand-y);
+ * this routes everything through the `void-btn` class so it inherits the
+ * active VS Code button colours and focus ring instead.
+ */
 const PrimaryActionButton = ({ children, className, ringSize, ...props }: { children: React.ReactNode, ringSize?: undefined | 'xl' | 'screen' } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
 
+	const sizeClasses =
+		ringSize === 'xl' ? 'gap-2 px-12 py-5 text-base'
+			: ringSize === 'screen' ? 'gap-2 px-12 py-5 text-base'
+				: 'gap-2 px-5 py-2 text-sm'
 
 	return (
 		<button
 			type='button'
-			className={`
-				flex items-center justify-center
-
-				text-white dark:text-black
-				bg-black/90 dark:bg-white/90
-
-				${ringSize === 'xl' ? `
-					gap-2 px-16 py-8
-					transition-all duration-300 ease-in-out
-					`
-					: ringSize === 'screen' ? `
-					gap-2 px-16 py-8
-					transition-all duration-1000 ease-in-out
-					`: ringSize === undefined ? `
-					gap-1 px-4 py-2
-					transition-all duration-300 ease-in-out
-				`: ''}
-
-				rounded-lg
-				group
-				${className}
-			`}
+			className={`void-btn group ${sizeClasses} ${className ?? ''}`}
 			{...props}
 		>
 			{children}
 			<ChevronRight
-				className={`
-					transition-all duration-300 ease-in-out
-
-					transform
-					group-hover:translate-x-1
-					group-active:translate-x-1
-				`}
+				className='transition-transform duration-200 group-hover:translate-x-0.5 group-active:translate-x-0.5'
+				size={16}
 			/>
 		</button>
 	)
@@ -466,6 +443,101 @@ const PrimaryActionButton = ({ children, className, ringSize, ...props }: { chil
 
 
 type WantToUseOption = 'smart' | 'private' | 'cheap' | 'all'
+
+
+/*
+ * Welcome screen — first impression of VS Aware.
+ *
+ * Goals (kept deliberately small):
+ *   - Read like a native VS Code welcome page: theme-driven colours, no
+ *     brand-y black/white pills, no emoji.
+ *   - Give users a sense of what they're stepping into via three small
+ *     "what you'll set up" cards instead of a giant logo + button.
+ *   - Stagger the entrance so it feels alive without being slow.
+ *
+ * The interactive bit is the highlight card on the right: hovering one of the
+ * intent rows updates the headline so the user can see what each path looks
+ * like before they click "Get Started".
+ */
+type IntentKey = 'chat' | 'private' | 'fast'
+
+const intents: { key: IntentKey; title: string; blurb: string; icon: typeof MessageSquare }[] = [
+	{ key: 'chat', title: 'Chat with your codebase', blurb: 'Ask questions, refactor, debug — context aware in your repo.', icon: MessageSquare },
+	{ key: 'private', title: 'Stay fully local', blurb: 'Plug Ollama or vLLM in. Nothing leaves your machine.', icon: ShieldCheck },
+	{ key: 'fast', title: 'Pick the smartest model', blurb: 'Bring your key, mix providers. Use whichever is best for the task.', icon: Sparkles },
+]
+
+const blurbForIntent: Record<IntentKey, string> = {
+	chat: 'A chat pane that lives in your dock — same shortcuts, same theme.',
+	private: 'Run models locally. We auto-detect Ollama and friends.',
+	fast: 'Mix and match providers. Use the best model per feature.',
+}
+
+const WelcomePane = ({ onContinue }: { onContinue: () => void }) => {
+	const [hovered, setHovered] = useState<IntentKey>('chat')
+
+	return (
+		<div className='flex flex-col items-center gap-10 w-full max-w-3xl mx-auto px-6'>
+
+			<FadeIn delayMs={50} durationMs={500} className='flex flex-col items-center gap-2 text-center'>
+				<div className='text-xs uppercase tracking-[0.2em] text-void-fg-3'>VS Aware</div>
+				<div className='text-4xl md:text-5xl font-light text-void-fg-1'>Welcome.</div>
+				<div className='text-base text-void-fg-2 max-w-md'>
+					{blurbForIntent[hovered]}
+				</div>
+			</FadeIn>
+
+			<FadeIn delayMs={250} durationMs={600} className='w-full'>
+				<div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
+					{intents.map(({ key, title, blurb, icon: Icon }) => {
+						const isActive = hovered === key
+						return (
+							<button
+								key={key}
+								type='button'
+								onMouseEnter={() => setHovered(key)}
+								onFocus={() => setHovered(key)}
+								onClick={onContinue}
+								className={`
+									group flex flex-col gap-2 items-start text-left
+									p-4 rounded-md border transition-colors
+									${isActive
+										? 'border-void-accent bg-vscode-list-hover-bg'
+										: 'border-void-border-2 bg-transparent hover:bg-vscode-list-hover-bg'}
+								`}
+							>
+								<div className={`flex items-center justify-center w-8 h-8 rounded-md
+									${isActive ? 'bg-void-accent text-void-accent-fg' : 'bg-void-bg-2 text-void-fg-2'}
+								`}>
+									<Icon size={16} />
+								</div>
+								<div className='text-sm font-medium text-void-fg-1'>{title}</div>
+								<div className='text-xs text-void-fg-3 leading-relaxed'>{blurb}</div>
+							</button>
+						)
+					})}
+				</div>
+			</FadeIn>
+
+			<FadeIn delayMs={500} durationMs={500} className='flex flex-col items-center gap-3'>
+				<PrimaryActionButton onClick={onContinue}>
+					Get Started
+				</PrimaryActionButton>
+				<div className='text-xs text-void-fg-4'>
+					Two minutes. You can change everything later in Settings.
+				</div>
+			</FadeIn>
+
+			{/* Decorative VS Aware mark — only on platforms where it renders cleanly */}
+			{!isLinux && (
+				<FadeIn delayMs={900} durationMs={1200} className='absolute pointer-events-none opacity-[0.05] -z-10'>
+					<VoidIcon />
+				</FadeIn>
+			)}
+		</div>
+	)
+}
+
 
 const VoidOnboardingContent = () => {
 
@@ -594,28 +666,7 @@ const VoidOnboardingContent = () => {
 
 	const contentOfIdx: { [pageIndex: number]: React.ReactNode } = {
 		0: <OnboardingPageShell
-			content={
-				<div className='flex flex-col items-center gap-8'>
-					<div className="text-5xl font-light text-center">Welcome to VS Aware</div>
-
-					{/* Slice of Void image */}
-					<div className='max-w-md w-full h-[30vh] mx-auto flex items-center justify-center'>
-						{!isLinux && <VoidIcon />}
-					</div>
-
-
-					<FadeIn
-						delayMs={1000}
-					>
-						<PrimaryActionButton
-							onClick={() => { setPageIndex(1) }}
-						>
-							Get Started
-						</PrimaryActionButton>
-					</FadeIn>
-
-				</div>
-			}
+			content={<WelcomePane onContinue={() => setPageIndex(1)} />}
 		/>,
 
 		1: <OnboardingPageShell hasMaxWidth={false}

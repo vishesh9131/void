@@ -12,7 +12,7 @@
 	--void-bg-1-alt: var(--vscode-badge-background);
 	--void-bg-2: var(--vscode-sideBar-background);
 	--void-bg-2-alt: color-mix(in srgb, var(--vscode-editor-background) 30%, var(--vscode-sideBar-background) 70%);
-	--void-bg-2-hover: color-mix(in srgb, var(--vscode-editor-foreground) 2%, var(--vscode-sideBar-background) 98%);
+	--void-bg-2-hover: color-mix(in srgb, var(--vscode-list-hoverBackground, var(--vscode-editor-foreground)) 12%, var(--vscode-sideBar-background) 88%);
 	--void-bg-3: var(--vscode-editor-background);
 
 	--void-fg-0: color-mix(in srgb, var(--vscode-tab-activeForeground) 90%, black 10%);
@@ -29,8 +29,23 @@
 	--void-border-3: var(--vscode-commandCenter-inactiveBorder);
 	--void-border-4: var(--vscode-editorGroup-border);
 
-	--void-ring-color: #007FD4;
-	--void-link-color: #007FD4;
+	/* primary accent now follows the active VS Code theme rather than a fixed brand blue */
+	--void-accent: var(--vscode-button-background, var(--vscode-focusBorder, #007ACC));
+	--void-accent-fg: var(--vscode-button-foreground, #ffffff);
+	--void-accent-hover: var(--vscode-button-hoverBackground, var(--vscode-button-background, #007ACC));
+	--void-accent-muted: color-mix(in srgb, var(--void-accent) 18%, transparent);
+
+	/* secondary buttons follow the secondary button colors from the active theme */
+	--void-secondary-bg: var(--vscode-button-secondaryBackground, var(--vscode-editorWidget-background));
+	--void-secondary-fg: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+	--void-secondary-hover: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
+
+	/* selection / rings follow VS Code focus colour, falling back to the original blue */
+	--void-ring-color: var(--vscode-focusBorder, #007FD4);
+	--void-link-color: var(--vscode-textLink-foreground, var(--vscode-focusBorder, #007FD4));
+
+	--void-success: var(--vscode-testing-iconPassed, var(--vscode-charts-green, #89D185));
+	--void-danger: var(--vscode-errorForeground, var(--vscode-charts-red, #F48771));
 }
 
 .select-child-restyle select {
@@ -56,6 +71,168 @@
 
 .bg-editor-style-override {
 	--vscode-sideBar-background: var(--vscode-editor-background);
+}
+
+
+/*
+ * Native-feeling pane chrome.
+ *
+ * The chat sidebar is mounted inside a real workbench ViewPane, but the React
+ * tree didn't reuse VS Code's section-header look. These helpers paint the
+ * inner sections so the panel reads as a normal dockview pane (sticky header,
+ * subtle separators, hover affordances) regardless of the active theme.
+ */
+.void-pane-section-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--vscode-sideBarSectionHeader-foreground, var(--vscode-foreground));
+	background: var(--vscode-sideBarSectionHeader-background, transparent);
+	border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+	user-select: none;
+	position: sticky;
+	top: 0;
+	z-index: 2;
+}
+
+.void-pane-section-header > .void-pane-section-action {
+	margin-left: auto;
+	color: var(--vscode-icon-foreground, var(--vscode-foreground));
+	opacity: 0.7;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	padding: 2px;
+	border-radius: 3px;
+}
+.void-pane-section-header > .void-pane-section-action:hover {
+	opacity: 1;
+	background: var(--vscode-toolbar-hoverBackground, transparent);
+}
+
+/* row used by suggestions / recent threads to mimic the workbench list rows */
+.void-list-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 22px;
+	padding: 2px 8px;
+	color: var(--vscode-sideBar-foreground, var(--vscode-foreground));
+	cursor: pointer;
+	border-radius: 3px;
+}
+.void-list-row:hover {
+	background: var(--vscode-list-hoverBackground, transparent);
+	color: var(--vscode-list-hoverForeground, var(--vscode-foreground));
+}
+.void-list-row:focus,
+.void-list-row.is-active {
+	background: var(--vscode-list-activeSelectionBackground, var(--vscode-list-hoverBackground));
+	color: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground));
+}
+
+/* Buttons styled exactly like other workbench dialogs - drives onboarding too. */
+.void-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 6px 14px;
+	min-height: 26px;
+	font-family: var(--vscode-font-family, inherit);
+	font-size: 13px;
+	line-height: 18px;
+	border: 1px solid transparent;
+	border-radius: 2px;
+	cursor: pointer;
+	transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+	color: var(--void-accent-fg);
+	background: var(--void-accent);
+}
+.void-btn:hover:not(:disabled) {
+	background: var(--void-accent-hover);
+}
+.void-btn:focus-visible {
+	outline: 1px solid var(--vscode-focusBorder);
+	outline-offset: 2px;
+}
+.void-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.void-btn--secondary {
+	color: var(--void-secondary-fg);
+	background: var(--void-secondary-bg);
+	border-color: var(--vscode-button-border, transparent);
+}
+.void-btn--secondary:hover:not(:disabled) {
+	background: var(--void-secondary-hover);
+}
+
+.void-btn--ghost {
+	color: var(--vscode-foreground);
+	background: transparent;
+	border-color: var(--vscode-contrastBorder, transparent);
+}
+.void-btn--ghost:hover:not(:disabled) {
+	background: var(--vscode-toolbar-hoverBackground, var(--void-bg-2-hover));
+}
+
+/* small chip used by suggestion buttons in chat landing page */
+.void-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	font-size: 12px;
+	color: var(--vscode-foreground);
+	background: var(--vscode-editorWidget-background, var(--void-bg-2-hover));
+	border: 1px solid var(--vscode-widget-border, transparent);
+	border-radius: 12px;
+	cursor: pointer;
+	transition: background-color 120ms ease, border-color 120ms ease;
+}
+.void-chip:hover {
+	background: var(--vscode-list-hoverBackground, var(--void-bg-2-hover));
+	border-color: var(--vscode-focusBorder, transparent);
+}
+
+/* compact tab list used in onboarding/settings instead of the old #0e70c0 pills */
+.void-tab {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	font-size: 13px;
+	color: var(--vscode-foreground);
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	cursor: pointer;
+	text-align: left;
+}
+.void-tab:hover {
+	background: var(--vscode-list-hoverBackground, var(--void-bg-2-hover));
+}
+.void-tab.is-active {
+	background: var(--vscode-list-activeSelectionBackground, var(--void-accent));
+	color: var(--vscode-list-activeSelectionForeground, var(--void-accent-fg));
+	border-color: var(--vscode-focusBorder, transparent);
+}
+
+/* Soft animated emphasis for the welcome screen "ready" indicator. */
+@keyframes void-pulse-ring {
+	0% { box-shadow: 0 0 0 0 var(--void-accent-muted); }
+	70% { box-shadow: 0 0 0 12px transparent; }
+	100% { box-shadow: 0 0 0 0 transparent; }
+}
+.void-pulse {
+	animation: void-pulse-ring 2.4s ease-out infinite;
 }
 
 
